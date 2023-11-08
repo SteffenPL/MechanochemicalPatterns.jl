@@ -1,1 +1,10 @@
+########################
+## Configuration file ##
+########################
+
+# local folders
 data_dir = "./data"  # this folder can also point to your local data folder
+
+
+# plotting options
+makie_inline = true   # if true, plots are shown inside VS Code
