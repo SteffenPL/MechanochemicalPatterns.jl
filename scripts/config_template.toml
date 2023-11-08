@@ -3,8 +3,9 @@
 ########################
 
 # local folders
-data_dir = "./data"  # this folder can also point to your local data folder
-
+input_dir  = "./input"          # input files for the model
+data_dir   = "./input/data"     # shared experimental datasets
+output_dir = "./output"         # target for outputs (plots, videos, etc.)
 
 # plotting options
 makie_inline = true   # if true, plots are shown inside VS Code

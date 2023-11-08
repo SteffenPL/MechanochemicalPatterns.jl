@@ -3,5 +3,6 @@
 *.jl.mem
 /Manifest.toml
 /docs/build/
-/data/
+/input/data/
 /scripts/config.toml
+/output/

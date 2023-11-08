@@ -14,8 +14,21 @@ using Pkg
 Pkg.instantiate()  # or in pkg> mode
 ```
 
-In addition, there is the file `scripts\config.toml` which is not shipped with the package
-for local configuration (such as paths). Copy the file to `scripts\config_template.toml` to `scripts\config.toml` and edit the file to your needs.
+### Local configuration file
 
-The `data_folder` (see config file) refers to a shared folder which collects all 
-experimental datasets. As these files are large we use other cloud drives to share these datasets (Google Drive or OneDrive).
+To avoid that changes in the repository depend on the computer one is using, **we use a local configuration file which is not syncronized with the repository.**
+
+
+To initialize, copy `scripts\config_template.toml` to `scripts\config.toml` and edit the file according to your needs.
+
+Options:
+- `data_dir` a shared folder which collects all experimental datasets (shared via Google Drive or OneDrive).
+- `input_dir` folder to read parameter files from.
+- `output_dir` target folder for generated data like plots, videos and CSV tables. (Should be outside of this git repository.)
+- `makie_inline` determines if plots appear in an extra window or inside VS Code.
+
+Please use the following line to obtain the configuration in your scripts: 
+```
+using TOML
+config = TOML.parsefile("scripts/config.toml")
+```
