@@ -28,7 +28,17 @@ Options:
 - `makie_inline` determines if plots appear in an extra window or inside VS Code.
 
 Please use the following line to obtain the configuration in your scripts: 
+```julia
+using MechanochemicalPatterns
+config = load_config()
 ```
+or 
+```julia
 using TOML
 config = TOML.parsefile("scripts/config.toml")
 ```
+
+## Guidelines 
+
+- Quantities should always be in units with respect to `μm`, `hours` (and `pg`). 
+  - For nondimensional code, please define global scaling factors explicitly in the code, such that one can easily see convert the model to proper units.

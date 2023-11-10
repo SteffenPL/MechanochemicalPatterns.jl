@@ -1,7 +1,9 @@
-using CSV, DataFrames, Glob, TOML, GLMakie
-config = TOML.parsefile("scripts/config.toml")
+using Revise
+using MechanochemicalPatterns
 
-config["makie_inline"] && Makie.inline!(true) 
+using CSV, DataFrames, Glob, GLMakie
+
+config = load_config()
 
 # real all tracking data from given folder (inside data_dir)
 csv_files = readdir(glob"*/FW_Day1_Cycle_01/*.csv", config["data_dir"])

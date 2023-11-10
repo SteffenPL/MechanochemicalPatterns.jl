@@ -9,6 +9,11 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+ProtoStructs = "437b6fc4-8e8e-11e9-3fa1-ad391e66c018"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+SpatialHashTables = "894afd4e-5c6f-4d1a-a294-873acbd0e95c"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 julia = "1.9"

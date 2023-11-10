@@ -1,0 +1,36 @@
+[env]
+    damping = 1.0              # pg/hr (makes mass non-dimensional)
+    domain = { center = [0.0, 0, 75], size = [500.0, 500, 150] }   # μm
+
+[sim]
+    t_end   = 24.0  # hr
+    dt      = 0.01  # hr
+    saveat  = 0.1   # hr
+
+    grid = [50, 50, 10]  # for collision detection 
+
+[cells]
+    R_soft = 5.0        # μm
+    R_hard = 3.0        # μm 
+    R_interact = 5.0    # μm (maximal interaction range)
+    lifespan = 24.0     # hr
+
+    repulsion_stiffness = 1.0
+
+    # init_pos = {normal = {mean = [0,0,75], std = [100,100,15]}}
+    init_pos = {uniform_domain = {fnc = "150^2 - (x^2 + y^2 + (z+75)^2)", domain = { center = [0.0, 0.0, 75.0], size = [500.0, 500.0, 150.0] }}}
+
+    [cells.types.proximal]
+        N = 500
+        adhesion_stiffness = 1.2
+
+
+    [cells.types.distal]
+        N = 50
+        adhesion_stiffness = 1.6
+
+        # init_pos = {normal = {mean = [0.0,50,75], std = [30,30,15]}}
+
+    [cells.interaction]
+        adhesion_stiffness = 1.5
+
