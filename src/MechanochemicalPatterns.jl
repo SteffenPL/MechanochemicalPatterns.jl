@@ -1,5 +1,5 @@
 module MechanochemicalPatterns
-    using TOML
+    using TOML, Random, StaticArrays
 
     include("utils/load_config.jl")
     include("utils/recursive_namedtuple.jl")

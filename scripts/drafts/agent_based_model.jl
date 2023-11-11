@@ -1,6 +1,6 @@
 # Note: all quantities carry units in terms of μm and hours.
 using Revise
-using GLMakie, StaticArrays, SpatialHashTables, TOML, ProtoStructs
+using GLMakie, StaticArrays, SpatialHashTables, TOML, ProtoStructs, Printf, Random
 using MechanochemicalPatterns
 
 config = load_config()
@@ -23,11 +23,16 @@ end
 
 # Model parameters 
 p_dict = TOML.parsefile("scripts/drafts/parameters.toml")
-p = recursive_namedtuple(p_dict)
+
+preprocess(x) = x
+preprocess(x::String) = startswith(x, "julia:") ? eval(Meta.parse(x[7:end])) : x
+
+p = recursive_namedtuple(p_dict, preprocess)
 
 # maximal distance between complex interactions
 
 dom = p.env.domain
+
 
 SpatialHashTable((  min = SVecD(dom.center - 0.5 .* dom.size), 
                     max = SVecD(dom.center + 0.5 .* dom.size)), 
@@ -35,10 +40,12 @@ SpatialHashTable((  min = SVecD(dom.center - 0.5 .* dom.size),
                     100)
 
 N = sum(ct.N for ct in p.cells.types)
-cell_type = rand([1,2], N)
+cell_type = [ i for ct in p.cells.types for i in fill(ct.ID, ct.N) ]
+shuffle!(cell_type)
 
 # initial cell positions
-X = [ SVecD(eval_param(get_param(p, cell_type[i], :init_pos))...) for i in 1:N ]
+@time X = [ SVecD(eval_param(get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+
 
 
 begin
@@ -48,25 +55,28 @@ begin
 
     X_node = Observable(X)
 
-    meshscatter!(X_node, markersize = 10.0, space = :data, color = cell_type, colormap = [:magenta, :green], ssao=true)
-    fig
+    meshscatter!(X_node, markersize = 2 * p.cells.R_hard, space = :data, color = cell_type, colormap = [:magenta, :green], ssao=true)
+    display(fig)
 end
 
+
+#=
 @proto mutable struct State
-    X::Vector{SVecD} = SVecD[]
-    cell_type::Vector{Int} = Int[]
+    const X::Vector{SVecD} = SVecD[]
+    const cell_type::Vector{Int} = Int[]
     t::Float64 = 0.0
 end
 
+Base.show(io::IO, s::State) = @printf io "State(%d cells @ t = %.2fh)" length(s.X) s.t
 
-
-s = State()
-
-function init_cache()
-
+@proto mutable struct Cache 
+    x::Int64
+    y::Int64
 end
 
-function simulate(p, s_init, callbacks = nothing)
+s_init = State(; X, cell_type)
+
+function simulate(p, s_init, callbacks = Function[])
 
     s = deepcopy(s_init)
     states = [deepcopy(s)]
@@ -84,10 +94,8 @@ function simulate(p, s_init, callbacks = nothing)
                 push!(states, deepcopy(s))
             end
     
-            if !isnothing(callbacks)
-                for callback in callbacks
-                    callback(p, s, cache)
-                end
+            for callback in callbacks
+                callback(p, s, cache)
             end
 
             for i in 1:N
@@ -123,3 +131,4 @@ end
 struct CellPlot 
 
 end
+=#

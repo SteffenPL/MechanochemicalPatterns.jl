@@ -1,4 +1,8 @@
-eval_param(x) = x 
+eval_param(x, args...) = x 
+
+function eval_param(x::Function, args...)
+    return x(args...)
+end
 
 function eval_param(x::@NamedTuple{uniform::Vector}) 
     # Example: {uniform = [-1, 2]}
@@ -18,20 +22,34 @@ function eval_param(x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) wher
 end
 
 
-function eval_param(x::@NamedTuple{uniform_domain::@NamedTuple{domain::T1, fnc::T2}}) where {T1, T2} 
-    fnc = eval(Meta.parse("(x,y,z) -> $(x.uniform_domain.fnc)"))
-    dom = x.uniform_domain.domain
-    d = length(dom.center)
+function eval_param(nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2, T3 <: Function} 
+    dom = nt.custom_distr.domain_bounds
 
-    # generate random points inside the bounds and with fnc(x,y,z) > 0
-    r = zeros(Float64, d)
+    # generate random points inside the bounds and with fnc(x,y,z) > 0 
+    x = init_vector
     for i in 1:1000  # to avoid infinite loops
-        r .= dom.center .+ (-0.5 .+ rand(d)) .* dom.size
-        if Base.invokelatest(fnc, r...) > 0
-            return r
+        # new random point
+        nt.custom_distr.distr(x, dom)
+
+        # indomain 
+        if nt.custom_distr.domain_fnc(x) > 0
+            if all(2 * abs.(x - dom.center) .< dom.size)  
+                return x
+            end
         end
     end
 
-    @error "No point founds with (x,y,z) -> $(x.uniform_domain.fnc) > 0 and inside the bounds $(dom)."
+    @error "No point in custom domain found."
     return NaN
+end
+
+
+function eval_param(nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2} 
+
+    distr = function (x, dom)
+        rand!(x)
+        @. x = x * dom.size + dom.center - 0.5 * dom.size
+    end
+
+    return eval_param((;custom_distr = (nt.custom_distr..., distr = distr)), init_vector)
 end
