@@ -2,7 +2,7 @@
 using Revise
 using TOML, Random, Printf
 using GLMakie, StaticArrays, SpatialHashTables, ProtoStructs, ProgressMeter, Accessors
-
+using OrdinaryDiffEq
 using MechanochemicalPatterns
 
 config = load_config()
@@ -67,7 +67,7 @@ function init_state(p)
 end
 
 function init_cache(p, s)
-    margin = 0.5
+    margin = 1.0
     dom = p.env.domain
     sht = SpatialHashTable((  min = SVecD(dom.center - (0.5 + margin) .* dom.size), 
                         max = SVecD(dom.center + (0.5 + margin) .* dom.size)), 
@@ -226,7 +226,7 @@ p = @set p.sim.dt = 0.1
 begin
     fig = Figure()
     ax = LScene(fig[1, 1])
-    alpha = clamp(10 / length(states[end].X), 0.01, 0.2)
+    alpha = clamp(20 / length(states[end].X), 0.01, 0.2)
 
     i_slider = Slider(fig[2, 1], range = 1:length(states), startvalue = 1)
     X_node = @lift states[$(i_slider.value)].X

@@ -7,7 +7,21 @@
     dt      = 0.01  # hr
     saveat  = 0.1   # hr
 
-    grid = [50, 50, 10]  # for collision detection 
+    [sim.collision_detection]
+        grid = [50, 50, 10]     # number of boxes for collision detection 
+        margin = 1.0            # normalized % for extra space around domain
+
+[signals]
+    dx = 0.01   # μm
+
+    [signals.types.u]
+        D = 0.1                     # unit???
+        initial_distr = """julia: 
+                        function (x, p)
+                            std = 5.0
+                            return exp( -dist(x, domain.center)^2 / (2 * std^2) )
+                        end
+                        """
 
 [cells]
     R_soft = 10.0        # μm
@@ -37,7 +51,8 @@
                     function (x, domain)
                         sigma = 50
                         center = (0, 50, 25)
-                        randn!(x); @. x = x * sigma + center
+                        randn!(x)
+                        @. x = x * sigma + center
                     end
                     """
                 domain_fnc = "julia: (x) -> 150^2 - (x[1]^2 + x[2]^2 + (x[3]+75)^2)"

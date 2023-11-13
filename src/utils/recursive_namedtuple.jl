@@ -1,5 +1,19 @@
 preprocess(x) = x
-preprocess(x::String) = startswith(x, "julia:") ? eval(Meta.parse(x[7:end])) : x
+
+function preprocess(x::String) 
+    if startswith(x, "julia:") 
+        try
+            expr = replace(x[7:end], "\n" => ";")
+            eval(Meta.parse(expr))
+        catch e
+            println("Error in parsing: ", x[7:end])
+            showerror(stdout, e)
+            @error "Unable to compile Julia expressions in parameter file."
+        end
+    else 
+        x
+    end
+end
 
 function recursive_namedtuple(d::Dict, preprocess = preprocess)
     for (k, v) in d
