@@ -6,12 +6,11 @@ function load_config(fn = "scripts/config.toml")
 end
 
 function init_makie(config)
-    if config["makie_inline"] && @isdefined Makie 
+    if config["makie_inline"]
         Makie.inline!(true)
     end
 
-    if @isdefined GLMakie
-        GLMakie.activate!(ssao=true)
-        GLMakie.closeall()
-    end
+    GLMakie.activate!(ssao=true)
+    GLMakie.closeall()
+    println("Use SSAO rendering with GLMakie.")
 end

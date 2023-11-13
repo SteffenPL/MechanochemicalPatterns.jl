@@ -21,7 +21,6 @@ function eval_param(x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) wher
     return r
 end
 
-
 function eval_param(nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2, T3 <: Function} 
     dom = nt.custom_distr.domain_bounds
 
@@ -52,4 +51,18 @@ function eval_param(nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, do
     end
 
     return eval_param((;custom_distr = (nt.custom_distr..., distr = distr)), init_vector)
+end
+
+
+
+
+function get_param(p, cell_type, sym, default = 0.0)
+    ct = p.cells.types[cell_type]
+    if hasproperty(ct, sym) 
+        return ct[sym]
+    elseif hasproperty(p.cells, sym)
+        return p.cells[sym]
+    else
+        return default
+    end
 end

@@ -1,5 +1,5 @@
 module MechanochemicalPatterns
-    using TOML, Random, StaticArrays
+    using TOML, Random, StaticArrays, GLMakie
 
     include("utils/load_config.jl")
     include("utils/recursive_namedtuple.jl")
@@ -7,5 +7,5 @@ module MechanochemicalPatterns
 
     export load_config, init_makie
     export recursive_namedtuple
-    export eval_param
+    export eval_param, get_param
 end
