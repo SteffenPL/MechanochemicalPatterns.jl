@@ -1,7 +1,7 @@
 # Note: all quantities carry units in terms of μm and hours.
 using Revise
 using TOML, Random, Printf
-using GLMakie, StaticArrays, SpatialHashTables, ProtoStructs, ProgressMeter, Accessors
+using GLMakie, StaticArrays, SpatialHashTables, ProtoStructs, ProgressMeter, Accessors, BoundedDegreeGraphs
 using OrdinaryDiffEq
 using MechanochemicalPatterns
 
@@ -13,11 +13,6 @@ const SVecD = SVector{Dim, Float64}
 
 
 # Model parameters 
-function load_parameters(fn = "scripts/drafts/parameters.toml")
-    p_dict = TOML.parsefile(fn)
-    return recursive_namedtuple(p_dict)
-end
-
 
 
 # The state contains all data which is needed to produce the next 

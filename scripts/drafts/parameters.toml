@@ -15,7 +15,7 @@
     dx = 0.01   # μm
 
     [signals.types.u]
-        D = 0.1                     # unit???
+        D = 0.1                     # unit ???
         initial_distr = """julia: 
                         function (x, p)
                             std = 5.0
