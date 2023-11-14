@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 MechanochemicalPatterns = "aaf28b51-dd7d-45f0-8d58-0346eb5c487c"
+SpatialHashTables = "894afd4e-5c6f-4d1a-a294-873acbd0e95c"
