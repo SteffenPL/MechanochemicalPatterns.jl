@@ -24,12 +24,16 @@
                         """
 
 [cells]
-    R_soft = 10.0        # μm
+    R_soft = 5.0        # μm
     R_hard = 3.0        # μm 
-    R_interact = 10.0    # μm (maximal interaction range)
+    R_adh = 12.0      # μm
+    R_interact = 7.0    # μm (maximal interaction range)
     lifespan = 24.0     # hr
-    repulsion_stiffness = 1.0
-    sigma = 0.0         # μm / √hr (for random walk)
+    repulsion_stiffness = 0.7
+    sigma = 0.5         # μm / √hr (for random walk)
+
+    new_adh_rate = 10.0  # 1/hr
+    adh_duration = 10.0  # hr
 
     [cells.init_pos.custom_distr]
         domain_fnc = """julia: 

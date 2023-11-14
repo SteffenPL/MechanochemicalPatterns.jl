@@ -1,7 +1,9 @@
 # Note: all quantities carry units in terms of μm and hours.
 using Revise
 using TOML, Random, Printf
-using GLMakie, StaticArrays, SpatialHashTables, ProtoStructs, ProgressMeter, Accessors, BoundedDegreeGraphs
+using GLMakie, StaticArrays, ProtoStructs, ProgressMeter, Accessors 
+using Graphs
+using BoundedDegreeGraphs, SpatialHashTables
 using OrdinaryDiffEq
 using MechanochemicalPatterns
 
@@ -63,7 +65,11 @@ function init_state(p)
     # initial cell positions
     @time X = [ SVecD(eval_param(get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
 
-    return State(; X, cell_type)
+    # adhesive network 
+    adh_bonds = BDMGraph(N, 10)
+
+    return State(; X, cell_type, adh_bonds)
+
 end
 
 # begin
@@ -132,10 +138,56 @@ function reset_forces!(s, p, cache)
     end
 end
 
-function add_noise!(s, p, cache)
+function noise_kernel!(s, p, cache)
     sqrt_dt = sqrt(p.sim.dt)
     for i in eachindex(s.X)
         s.X[i] += randn(3) .* p.cells.sigma * sqrt_dt
+    end
+end
+
+function add_bonds!(s, p, cache, i, j, Xi, Xj, dij)
+    if dij < p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
+        if rand() < 1.0 - exp(-p.cells.new_adh_rate * p.sim.dt)
+            add_edge!(s.adh_bonds, i, j, 0.0)
+        end
+    end
+end
+
+add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, p.cells.R_adh)
+
+function apply_interaction_kernel!(s, p, cache, fnc, R)
+    for i in eachindex(s.X)
+        Xi = s.X[i]
+        for j in neighbours(cache.st, Xi, R)
+            if i < j 
+                Xj = s.X[j]
+                dij = dist(Xi, Xj)
+                fnc(s, p, cache, i, j, Xi, Xj, dij)
+            end
+        end
+    end
+end
+
+function remove_bonds!(s, p, cache)
+    bonds = s.adh_bonds
+    for e in edges(bonds)
+        i, j = src(e), dst(e)
+        dij = dist(s.X[i], s.X[j])
+
+        if bonds[i,j] > p.cells.adh_duration || dij > 2*p.cells.R_adh
+            rem_edge!(bonds, i, j)
+        end
+    end
+end
+
+function compute_adhesive_forces!(s, p, cache)
+    bonds = s.adh_bonds
+    for e in edges(bonds)
+        i, j = src(e), dst(e)
+        Xi, Xj = s.X[i], s.X[j]
+        k = cache.adhesion_stiffness[i] + cache.adhesion_stiffness[j]
+        cache.F[i] += k * (Xj - Xi)
+        cache.F[j] -= k * (Xj - Xi)
     end
 end
 
@@ -157,19 +209,21 @@ function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     end
 end
 
+
 function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
+    R_int = 2*p.cells.R_interact
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, 20.0)  # 1:i-1
+        for j in neighbours(cache.st, Xi, R_int)  # 1:i-1
             if i < j 
                 Xj = s.X[j]
                 dij² = dist²(Xi, Xj)
-                if dij² < 4*p.cells.R_interact^2
+                if dij² < 4*R_int^2
                     interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
                 end
             end
@@ -206,16 +260,21 @@ end
 
 
 function time_step!(s, p, cache) 
-    
+
+
     # update cache (in case of cell division)
     update_cache!(s, p, cache)
+
+    updateboxes!(cache.st, s.X)
+    add_bonds!(s, p, cache)
+    remove_bonds!(s, p, cache)
 
     # reset forces
     reset_forces!(s, p, cache)
 
-    updateboxes!(cache.st, s.X)
 
     # update forces
+    compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
 
     # add forces
@@ -284,14 +343,21 @@ begin
     X_node = @lift states[$(i_slider.value)].X
     ct = @lift states[$(i_slider.value)].cell_type
 
+    E_node = lift(i_slider.value) do i 
+        bonds = states[i].adh_bonds
+        @show ne(bonds)
+        Tuple{SVecD,SVecD}[ (states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
+    end
+
     meshscatter!(X_node, 
                 markersize = p.cells.R_hard, space = :data, 
                 color = ct, colormap = colors, transparency = true)
-
 
     meshscatter!(X_node, 
                 markersize = p.cells.R_soft, space = :data, 
                 color = ct, colormap = (c -> (c,alpha)).(colors), transparency = true)
     
+    linesegments!(E_node, color = :darkorange, linewidth = 2, transparency = true)
+
     display(fig)
 end
