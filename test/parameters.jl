@@ -1,5 +1,5 @@
 
 
 @testset "Parameters" begin 
-    p = load_parameters()
+    p = load_parameters("../scripts/drafts/parameters.jl")
 end
