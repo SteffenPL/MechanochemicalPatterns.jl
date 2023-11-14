@@ -168,9 +168,28 @@ function compute_interaction_forces!(s, p, cache)
         for j in neighbours(cache.st, Xi, 20.0)  # 1:i-1
             if i < j 
                 Xj = s.X[j]
-                dij = dist(Xi, Xj)
-                if dij < 2*p.cells.R_interact 
-                    interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+                dij² = dist²(Xi, Xj)
+                if dij² < 4*p.cells.R_interact^2
+                    interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
+                end
+            end
+        end
+    end
+end
+
+
+function project_non_overlap!(s, p, cache)
+    for i in eachindex(s.X)
+        Ri = cache.R_hard[i]
+        for j in neighbours(cache.st, s.X[i], 20.0) # 1:i-1
+            if i < j 
+                dij² = dist²(s.X[i], s.X[j])
+                Rij = Ri + cache.R_hard[j]
+                if dij² < 4*Rij^2
+                    dij = sqrt(dij²)
+                    Xij = s.X[j] - s.X[i]
+                    s.X[i] += (Rij - dij) / dij * Xij
+                    s.X[j] -= (Rij - dij) / dij * Xij
                 end
             end
         end
@@ -208,6 +227,7 @@ function time_step!(s, p, cache)
     add_noise!(s, p, cache)
     
     # deal with constraints
+    project_non_overlap!(s, p, cache)
     project_onto_domain!(s, p, cache)
 end
 
