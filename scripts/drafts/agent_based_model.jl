@@ -14,13 +14,17 @@ const SVecD = SVector{Dim, Float64}
 
 # Model parameters 
 
+const BDMGraph = BoundedDegreeMetaGraph
+const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
 
 # The state contains all data which is needed to produce the next 
 # time step (provided the parameters are known).
 @proto mutable struct State
     const X::Vector{SVecD} = SVecD[]  # position 
     const P::Vector{SVecD} = SVecD[]  # polarity
+    const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
+    const u::Matrix{Float64} = zeros(0,0)
     t::Float64 = 0.0
 end
 
@@ -36,6 +40,7 @@ end
     const t_divide::Vector{Float64} = Float64[]
     const repulsion_stiffness::Vector{Float64} = Float64[]
     const adhesion_stiffness::Vector{Float64} = Float64[]
+    const attraction_stiffness::Vector{Float64} = Float64[]
 
     # forces 
     const F::Vector{SVecD} = SVecD[]
@@ -60,18 +65,6 @@ function init_state(p)
 
     return State(; X, cell_type)
 end
-
-function init_cache(p, s)
-    margin = 1.0
-    dom = p.env.domain
-    sht = SpatialHashTable((  min = SVecD(dom.center - (0.5 + margin) .* dom.size), 
-                        max = SVecD(dom.center + (0.5 + margin) .* dom.size)), 
-                        (p.sim.grid...,), 
-                        length(s.X))
-
-    return Cache(; st = sht)
-end
-
 
 # begin
 #     fig = Figure()
@@ -100,16 +93,38 @@ function update_cache!(s, p, cache)
     if cache.outdated  
         for i in eachindex(s.X)
             ct = s.cell_type[i]
+            
             update_p(sym) = getproperty(cache, sym)[i] = get_param(p, ct, sym)
 
             update_p(:R_soft)
             update_p(:R_hard)
             update_p(:repulsion_stiffness)
             update_p(:adhesion_stiffness)
+            update_p(:attraction_stiffness)
         end
         cache.outdated = false
     end
 end
+
+function init_cache(p, s)
+    cd = p.sim.collision_detection
+    margin = cd.margin
+    dom = p.env.domain
+    sht = SpatialHashTable((  
+                            min = SVecD(dom.min - margin .* dom.size), 
+                            max = SVecD(dom.max + margin .* dom.size)), 
+                        (cd.grid...,), 
+                        length(s.X))
+
+    c = Cache(; st = sht)
+    resize_cache!(s, p, c)
+    update_cache!(s, p, c)
+
+    return c
+end
+
+
+
 
 function reset_forces!(s, p, cache)
     for i in eachindex(cache.F)
@@ -133,8 +148,18 @@ function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     end
 end
 
+function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+    Rij = cache.R_soft[i] + cache.R_soft[j] 
+    if dij < Rij 
+        k = cache.attraction_stiffness[i] + cache.attraction_stiffness[j]
+        cache.F[i] -= (Rij - dij) * k / dij * (Xi - Xj) 
+        cache.F[j] += (Rij - dij) * k / dij * (Xi - Xj) 
+    end
+end
+
 function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+    attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
@@ -150,6 +175,14 @@ function compute_interaction_forces!(s, p, cache)
             end
         end
     end
+end
+
+
+function project_onto_domain!(s, p, cache)
+    for i in eachindex(s.X)
+        R_hard = cache.R_hard[i]
+        s.X[i] = clamp.(s.X[i], p.env.domain.min .+ R_hard, p.env.domain.max .- R_hard)
+    end     
 end
 
 
@@ -174,6 +207,8 @@ function time_step!(s, p, cache)
     # add noise 
     add_noise!(s, p, cache)
     
+    # deal with constraints
+    project_onto_domain!(s, p, cache)
 end
 
 
@@ -193,16 +228,13 @@ function simulate(s, p, cache, callbacks = Function[])
 
     prog = Progress(n_steps, 1, "Simulating... ")
     for k_step in 1:n_steps 
-        
         time_step!(s, p, cache)
         s.t += dt 
-
         if t_unsaved > p.sim.saveat
             push!(states, deepcopy(s))
             t_unsaved = 0.0
         end
         t_unsaved += dt
-
         next!(prog)
     end
 
@@ -220,8 +252,13 @@ p = @set p.sim.dt = 0.1
 
 begin
     fig = Figure()
-    ax = LScene(fig[1, 1])
+    ax = Axis3(fig[1,1], aspect = :data) # LScene(fig[1, 1])
     alpha = clamp(20 / length(states[end].X), 0.01, 0.2)
+    colors = [:magenta, :lightgreen]
+
+    xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
+    ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
+    zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
 
     i_slider = Slider(fig[2, 1], range = 1:length(states), startvalue = 1)
     X_node = @lift states[$(i_slider.value)].X
@@ -229,11 +266,12 @@ begin
 
     meshscatter!(X_node, 
                 markersize = p.cells.R_hard, space = :data, 
-                color = ct, colormap = [:magenta, :green], transparency = true)
+                color = ct, colormap = colors, transparency = true)
 
 
     meshscatter!(X_node, 
                 markersize = p.cells.R_soft, space = :data, 
-                color = ct, colormap = [(:magenta,alpha), (:green,alpha)], transparency = true)
+                color = ct, colormap = (c -> (c,alpha)).(colors), transparency = true)
+    
     display(fig)
 end

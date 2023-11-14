@@ -15,6 +15,16 @@ function preprocess(x::String)
     end
 end
 
+preprocess(x::Vector{Union{Float64, Int64}}) = Float64.(x) 
+
+function preprocess(x::@NamedTuple{center::Vector{Float64}, size::Vector{Float64}}) 
+    c = SVector{length(x.center), Float64}(x.center)
+    s = SVector{length(x.size), Float64}(x.size)
+    min = c - 0.5 .* s
+    max = c + 0.5 .* s
+    return (center = c, size = s, min = min, max = max)
+end
+
 function recursive_namedtuple(d::Dict, preprocess = preprocess)
     for (k, v) in d
         if isa(v, Dict)
