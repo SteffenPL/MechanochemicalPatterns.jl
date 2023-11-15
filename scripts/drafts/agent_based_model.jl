@@ -13,6 +13,7 @@ init_makie(config)
 const Dim = 3
 const SVecD = SVector{Dim, Float64}
 
+const R_max = 20.0
 
 # Model parameters 
 
@@ -39,6 +40,8 @@ end
     N::Int = 0
     const R_soft::Vector{Float64} = Float64[]
     const R_hard::Vector{Float64} = Float64[]
+    const R_adh::Vector{Float64} = Float64[]
+    const R_attract::Vector{Float64} = Float64[]
     const t_divide::Vector{Float64} = Float64[]
     const repulsion_stiffness::Vector{Float64} = Float64[]
     const adhesion_stiffness::Vector{Float64} = Float64[]
@@ -107,6 +110,8 @@ function update_cache!(s, p, cache)
 
             update_p(:R_soft)
             update_p(:R_hard)
+            update_p(:R_adh)
+            update_p(:R_attract)
             update_p(:repulsion_stiffness)
             update_p(:adhesion_stiffness)
             update_p(:attraction_stiffness)
@@ -141,10 +146,10 @@ function reset_forces!(s, p, cache)
     end
 end
 
-function add_noise!(s, p, cache)
-    sqrt_dt = sqrt(p.sim.dt)
+function add_random_forces!(s, p, cache)
+    inv_sqrt_dt = 1/sqrt(p.sim.dt)
     for i in eachindex(s.X)
-        s.X[i] += randn(3) .* p.cells.sigma * sqrt_dt
+        cache.F[i] += randn(SVecD) * p.cells.sigma * inv_sqrt_dt
     end
 end
 
@@ -161,7 +166,7 @@ add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, 2*p.c
 function apply_interaction_kernel!(s, p, cache, fnc, R)
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R)
+        for j in neighbours(cache.st, Xi, R_max)
             if i < j 
                 Xj = s.X[j]
                 dij = dist(Xi, Xj)
@@ -204,7 +209,7 @@ end
 
 function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_soft[i] + cache.R_soft[j] 
-    if dij < Rij 
+    if 0.0 < dij < Rij 
         k = cache.repulsion_stiffness[i] + cache.repulsion_stiffness[j]
         cache.F[i] += (Rij - dij) * k / dij * (Xi - Xj) 
         cache.F[j] -= (Rij - dij) * k / dij * (Xi - Xj) 
@@ -212,8 +217,8 @@ function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    Rij = cache.R_soft[i] + cache.R_soft[j] 
-    if dij < Rij 
+    Rij = cache.R_attract[i] + cache.R_attract[j] 
+    if 0.0 < dij < Rij
         k = cache.attraction_stiffness[i] + cache.attraction_stiffness[j]
         cache.F[i] -= (Rij - dij) * k / dij * (Xi - Xj) 
         cache.F[j] += (Rij - dij) * k / dij * (Xi - Xj) 
@@ -223,14 +228,14 @@ end
 
 function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    #attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+    attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
     R_int = 2*p.cells.R_interact
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R_int)  # 1:i-1
+        for j in neighbours(cache.st, Xi, R_max)  # 1:i-1
             if i < j 
                 Xj = s.X[j]
                 dij² = dist²(Xi, Xj)
@@ -246,11 +251,11 @@ end
 function project_non_overlap!(s, p, cache)
     for i in eachindex(s.X)
         Ri = cache.R_hard[i]
-        for j in neighbours(cache.st, s.X[i], 20.0) # 1:i-1
+        for j in neighbours(cache.st, s.X[i], R_max) # 1:i-1
             if i < j 
                 dij² = dist²(s.X[i], s.X[j])
                 Rij = Ri + cache.R_hard[j]
-                if dij² < Rij^2 && dij² > 0.0
+                if 0.0 < dij² < Rij^2
                     dij = sqrt(dij²)
                     Xij = s.X[j] - s.X[i]
                     s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
@@ -275,8 +280,9 @@ function time_step!(s, p, cache)
 
     # update cache (in case of cell division)
     update_cache!(s, p, cache)
-
     updateboxes!(cache.st, s.X)
+
+    # cell events
     add_bonds!(s, p, cache)
     remove_bonds!(s, p, cache)
 
@@ -285,21 +291,36 @@ function time_step!(s, p, cache)
 
 
     # update forces
-    # compute_adhesive_forces!(s, p, cache)
+    compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     compute_gravity_forces!(s, p, cache)
+
+    # add noise 
+    add_random_forces!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
         s.X[i] += cache.F[i] * p.sim.dt / p.env.damping
     end
-
-    # add noise 
-    add_noise!(s, p, cache)
     
+    # detect instability 
+    if any(x -> any(isnan(xk) for xk in x), s.X)
+        error("Instability at time t = $(s.t)")
+    end
+
+    # detect out of bounds issues
+    ma = p.sim.collision_detection.margin
+    dom = p.env.domain 
+    for i in eachindex(s.X)
+        if !all(dom.min .- ma .* dom.size .<= s.X[i] .<= dom.max .+ ma .* dom.size)
+            error("Out of bounds at time t = $(s.t) at position $(s.X[i])")
+        end
+    end
+
     # deal with constraints
     project_non_overlap!(s, p, cache)
     project_onto_domain!(s, p, cache)
+
 end
 
 
@@ -337,23 +358,26 @@ p = load_parameters()
 s = init_state(p)
 cache = init_cache(p, s)
 
-p = @set p.sim.dt = 0.1
+# p = @set p.sim.dt = 0.1
 @time states = simulate(s, p, cache)
 
 
 begin
-    fig = Figure()
-    ax = Axis3(fig[1,1], aspect = :data) # LScene(fig[1, 1])
-
+    # figure configuration
+    colors = [:magenta, :lightgreen]
+    bond_color = :black
+    show_bonds = true
+    show_soft_spheres = false
     transparency = false
     alpha = clamp(200 / length(states[end].X), 0.01, 0.2)
-    colors = [:magenta, :lightgreen]
 
-    xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
-    ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
-    zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
+    transparent_colors = transparency ? (c -> (c,alpha)).(colors) : colors 
+    bond_color = transparency ? (bond_color, 0.5) : bond_color
+
+    fig = Figure(resolution = (1024, 768))
 
     i_slider = Slider(fig[2, 1], range = 1:length(states), startvalue = 1)
+    
     X_node = @lift states[$(i_slider.value)].X
     ct = @lift states[$(i_slider.value)].cell_type
 
@@ -363,15 +387,32 @@ begin
         Tuple{SVecD,SVecD}[ (states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
     end
 
+    t_node = @lift @sprintf "Time = %.1fh" states[$(i_slider.value)].t
+
+    ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
+
+    xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
+    ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
+    zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
+
     meshscatter!(X_node, 
                 markersize = p.cells.R_hard, space = :data, 
                 color = ct, colormap = colors; transparency)
 
-    meshscatter!(X_node, 
-                markersize = p.cells.R_soft, space = :data, 
-                color = ct, colormap = (c -> (c,alpha)).(colors); transparency)
-    
-    linesegments!(E_node, color = (:darkorange,0.5), linewidth = 2; transparency)
+    if show_soft_spheres
+        meshscatter!(X_node, 
+                    markersize = p.cells.R_soft, space = :data, 
+                    color = ct, colormap = transparent_colors; transparency)
+    end 
+
+    if show_bonds
+        linesegments!(E_node, color = bond_color, linewidth = 2; transparency)
+    end 
 
     display(fig)
+
+    for i in 1:10:length(states)
+        i_slider.value[] = i
+        sleep(0.01)
+    end
 end
