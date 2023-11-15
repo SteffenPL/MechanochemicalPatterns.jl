@@ -63,7 +63,7 @@ function init_state(p)
     shuffle!(cell_type)
 
     # initial cell positions
-    @time X = [ SVecD(eval_param(get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+    @time X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
 
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
@@ -72,6 +72,9 @@ function init_state(p)
 
 end
 
+# x = @MVector zeros(3)
+# p.cells.types.distal.init_pos.custom_distr.distr(x, p)
+# typeof(p.cells.types.distal.init_pos)
 # begin
 #     fig = Figure()
 #     ax = LScene(fig[1, 1], scenekw=(ssao=Makie.SSAO(radius = 15.0, blur = 3),))
@@ -138,7 +141,7 @@ function reset_forces!(s, p, cache)
     end
 end
 
-function noise_kernel!(s, p, cache)
+function add_noise!(s, p, cache)
     sqrt_dt = sqrt(p.sim.dt)
     for i in eachindex(s.X)
         s.X[i] += randn(3) .* p.cells.sigma * sqrt_dt
@@ -146,14 +149,14 @@ function noise_kernel!(s, p, cache)
 end
 
 function add_bonds!(s, p, cache, i, j, Xi, Xj, dij)
-    if dij < p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
+    if dij < 2*p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
         if rand() < 1.0 - exp(-p.cells.new_adh_rate * p.sim.dt)
             add_edge!(s.adh_bonds, i, j, 0.0)
         end
     end
 end
 
-add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, p.cells.R_adh)
+add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, 2*p.cells.R_adh)
 
 function apply_interaction_kernel!(s, p, cache, fnc, R)
     for i in eachindex(s.X)
@@ -174,8 +177,10 @@ function remove_bonds!(s, p, cache)
         i, j = src(e), dst(e)
         dij = dist(s.X[i], s.X[j])
 
-        if bonds[i,j] > p.cells.adh_duration || dij > 2*p.cells.R_adh
+        if bonds[i,j] > p.cells.adh_duration # || dij > 4*p.cells.R_adh
             rem_edge!(bonds, i, j)
+        else
+            bonds[i,j] += p.sim.dt
         end
     end
 end
@@ -188,6 +193,12 @@ function compute_adhesive_forces!(s, p, cache)
         k = cache.adhesion_stiffness[i] + cache.adhesion_stiffness[j]
         cache.F[i] += k * (Xj - Xi)
         cache.F[j] -= k * (Xj - Xi)
+    end
+end
+
+function compute_gravity_forces!(s, p, cache)
+    for i in eachindex(s.X)
+        cache.F[i] += p.env.gravity
     end
 end
 
@@ -212,7 +223,7 @@ end
 
 function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+    #attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
@@ -223,7 +234,7 @@ function compute_interaction_forces!(s, p, cache)
             if i < j 
                 Xj = s.X[j]
                 dij² = dist²(Xi, Xj)
-                if dij² < 4*R_int^2
+                if dij² < R_int^2
                     interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
                 end
             end
@@ -239,11 +250,11 @@ function project_non_overlap!(s, p, cache)
             if i < j 
                 dij² = dist²(s.X[i], s.X[j])
                 Rij = Ri + cache.R_hard[j]
-                if dij² < 4*Rij^2
+                if dij² < Rij^2 && dij² > 0.0
                     dij = sqrt(dij²)
                     Xij = s.X[j] - s.X[i]
-                    s.X[i] += (Rij - dij) / dij * Xij
-                    s.X[j] -= (Rij - dij) / dij * Xij
+                    s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
+                    s.X[j] += 0.5 * (Rij - dij) / dij * Xij
                 end
             end
         end
@@ -274,8 +285,9 @@ function time_step!(s, p, cache)
 
 
     # update forces
-    compute_adhesive_forces!(s, p, cache)
+    # compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
+    compute_gravity_forces!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
@@ -332,7 +344,9 @@ p = @set p.sim.dt = 0.1
 begin
     fig = Figure()
     ax = Axis3(fig[1,1], aspect = :data) # LScene(fig[1, 1])
-    alpha = clamp(20 / length(states[end].X), 0.01, 0.2)
+
+    transparency = false
+    alpha = clamp(200 / length(states[end].X), 0.01, 0.2)
     colors = [:magenta, :lightgreen]
 
     xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
@@ -351,13 +365,13 @@ begin
 
     meshscatter!(X_node, 
                 markersize = p.cells.R_hard, space = :data, 
-                color = ct, colormap = colors, transparency = true)
+                color = ct, colormap = colors; transparency)
 
     meshscatter!(X_node, 
                 markersize = p.cells.R_soft, space = :data, 
-                color = ct, colormap = (c -> (c,alpha)).(colors), transparency = true)
+                color = ct, colormap = (c -> (c,alpha)).(colors); transparency)
     
-    linesegments!(E_node, color = :darkorange, linewidth = 2, transparency = true)
+    linesegments!(E_node, color = (:darkorange,0.5), linewidth = 2; transparency)
 
     display(fig)
 end
