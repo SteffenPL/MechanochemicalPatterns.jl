@@ -6,19 +6,20 @@ const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
 
 # The state contains all data which is needed to produce the next 
 # time step (provided the parameters are known).
-Base.@kwdef mutable struct State
+@proto mutable struct State
     const X::Vector{SVecD} = SVecD[]  # position 
     const P::Vector{SVecD} = SVecD[]  # polarity
     const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
-    const u::Matrix{Float64} = zeros(0,0)
+    const u::Array{Float64,Dim} = zeros(0,0,0)
+    const v::Array{Float64,Dim} = zeros(0,0,0)
     t::Float64 = 0.0
 end
 
 
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
-Base.@kwdef mutable struct Cache 
+@proto mutable struct Cache 
     outdated::Bool = true  # for internal use
 
     # parameters 
@@ -56,8 +57,14 @@ function init_state(p)
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
 
-    return State(; X, cell_type, adh_bonds)
+    # signals 
+    xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
+    u = [p.signals.types.u.init((x,y,z), p) for x in xs, y in ys, z in zs]
+    v = similar(u)
+    v .= 0.0
+    
+    return State(; X, cell_type, adh_bonds, u, v)
 end
 
 function resize_cache!(s, p, cache)

@@ -4,7 +4,7 @@
     gravity = [0.0,0.0,-0.03]  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
 
 [sim]
-    t_end   = "julia: 1*24.0"  # hr
+    t_end   = "julia: 5*24.0"  # hr
     dt      = 0.01  # hr
     saveat  = 0.1   # hr
 
@@ -14,13 +14,15 @@
 
 [signals]
     dx = 0.01   # μm
+    grid = [500, 500, 150]
+    dt = 0.001  # hr
 
     [signals.types.u]
         D = 0.1                     # unit ???
-        initial_distr = """julia: 
+        init = """julia: 
                         function (x, p)
-                            std = 5.0
-                            return exp( -dist(x, domain.center)^2 / (2 * std^2) )
+                            std = 25.0
+                            return exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
                         end
                         """
 

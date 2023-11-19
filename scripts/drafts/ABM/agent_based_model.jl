@@ -22,6 +22,8 @@ p = load_parameters()
 s = init_state(p)
 cache = init_cache(p, s)
 
-@profview states = simulate(s, p, cache)
+states = simulate(s, p, cache)
 
 include("plots.jl")
+
+volume(s.u)

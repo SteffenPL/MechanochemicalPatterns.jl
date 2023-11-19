@@ -13,7 +13,6 @@ function time_step!(s, p, cache)
     # reset forces
     reset_forces!(s, p, cache)
 
-
     # update forces
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
