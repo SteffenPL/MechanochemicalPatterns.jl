@@ -4,7 +4,7 @@ function time_step!(s, p, cache)
 
     # update cache (in case of cell division)
     update_cache!(s, p, cache)
-    updateboxes!(cache.st, s.X)
+    updatetable!(cache.st, s.X)
 
     # cell events
     add_bonds!(s, p, cache)
@@ -25,20 +25,6 @@ function time_step!(s, p, cache)
     # add forces
     for i in eachindex(s.X)
         s.X[i] += cache.F[i] * p.sim.dt / p.env.damping
-    end
-    
-    # detect instability 
-    if any(x -> any(isnan(xk) for xk in x), s.X)
-        error("Instability at time t = $(s.t)")
-    end
-
-    # detect out of bounds issues
-    ma = p.sim.collision_detection.margin
-    dom = p.env.domain 
-    for i in eachindex(s.X)
-        if !all(dom.min .- ma .* dom.size .<= s.X[i] .<= dom.max .+ ma .* dom.size)
-            error("Out of bounds at time t = $(s.t) at position $(s.X[i])")
-        end
     end
 
     # deal with constraints

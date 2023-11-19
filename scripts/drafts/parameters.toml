@@ -9,8 +9,8 @@
     saveat  = 0.1   # hr
 
     [sim.collision_detection]
-        grid = [50, 50, 10]     # number of boxes for collision detection 
-        margin = 1.0            # normalized % for extra space around domain
+        boxsize = 10.0  # μm
+        margin = 0.5  # 0-1
 
 [signals]
     dx = 0.01   # μm

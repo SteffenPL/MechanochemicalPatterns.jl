@@ -94,7 +94,7 @@ function compute_interaction_forces!(s, p, cache)
     R_int = 2*p.cells.R_interact
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R_max)  # 1:i-1
+        for j in neighbours(cache.st, Xi, R_int)  # 1:i-1
             if i < j 
                 Xj = s.X[j]
                 dij² = dist²(Xi, Xj)

@@ -1,8 +1,7 @@
 # Note: all quantities carry units in terms of μm and hours.
 using Revise
 using TOML, Random, Printf
-using GLMakie, StaticArrays, ProtoStructs, ProgressMeter, Accessors 
-using Graphs
+using GLMakie, StaticArrays, ProtoStructs, ProgressMeter, Accessors, Graphs
 using BoundedDegreeGraphs, SpatialHashTables
 using OrdinaryDiffEq
 using MechanochemicalPatterns
@@ -19,12 +18,10 @@ include("forces.jl")
 include("simulation.jl")
 
 
-
 p = load_parameters()
 s = init_state(p)
 cache = init_cache(p, s)
 
-# p = @set p.sim.dt = 0.1
 @profview states = simulate(s, p, cache)
 
 include("plots.jl")

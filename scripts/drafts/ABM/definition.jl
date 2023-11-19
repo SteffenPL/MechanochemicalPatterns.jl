@@ -36,7 +36,7 @@ Base.@kwdef mutable struct Cache
     const F::Vector{SVecD} = SVecD[]
 
     # collision detection 
-    const st::SpatialHashTable{Dim}
+    const st::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
 end
 
 # for better printing
@@ -51,7 +51,7 @@ function init_state(p)
     shuffle!(cell_type)
 
     # initial cell positions
-    @time X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+    X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
 
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
@@ -59,22 +59,6 @@ function init_state(p)
     return State(; X, cell_type, adh_bonds)
 
 end
-
-# x = @MVector zeros(3)
-# p.cells.types.distal.init_pos.custom_distr.distr(x, p)
-# typeof(p.cells.types.distal.init_pos)
-# begin
-#     fig = Figure()
-#     ax = LScene(fig[1, 1], scenekw=(ssao=Makie.SSAO(radius = 15.0, blur = 3),))
-#     ax.scene.ssao.bias[] = 0.025
-
-#     X_node = Observable(X)
-
-#     meshscatter!(X_node, markersize = 2 * p.cells.R_hard, space = :data, color = cell_type, colormap = [:magenta, :green], ssao=true)
-#     display(fig)
-# end
-
-
 
 function resize_cache!(s, p, cache)
     cache.N = length(s.X)
@@ -107,13 +91,11 @@ end
 
 function init_cache(p, s)
     cd = p.sim.collision_detection
-    margin = cd.margin
+    margin = (0.5 + cd.margin)
     dom = p.env.domain
-    sht = SpatialHashTable((  
-                            min = SVecD(dom.min - margin .* dom.size), 
-                            max = SVecD(dom.max + margin .* dom.size)), 
-                        (cd.grid...,), 
-                        length(s.X))
+    sht = BoundedHashTable(length(s.X), cd.boxsize, 
+                            dom.min - margin .* dom.size, 
+                            dom.max + margin .* dom.size)
 
     c = Cache(; st = sht)
     resize_cache!(s, p, c)
