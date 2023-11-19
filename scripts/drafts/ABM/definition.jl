@@ -19,7 +19,7 @@ end
 
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
-@proto mutable struct Cache 
+@proto mutable struct Cache{ODEP, ODEI}
     outdated::Bool = true  # for internal use
 
     # parameters 
@@ -32,6 +32,10 @@ end
     const repulsion_stiffness::Vector{Float64} = Float64[]
     const adhesion_stiffness::Vector{Float64} = Float64[]
     const attraction_stiffness::Vector{Float64} = Float64[]
+
+    # ODE problem for the signals
+    const ode_prob::ODEP = nothing
+    const ode_integrator::ODEI = nothing
 
     # forces 
     const F::Vector{SVecD} = SVecD[]
@@ -64,6 +68,9 @@ function init_state(p)
     v = similar(u)
     v .= 0.0
     
+    prob = ODEProblem(ode_rhs, u, (0.0, 1.0), p.signals.types.u, p.signals.types.u.p)
+    integrator = init_ode_integrator(prob, p.signals.types.u)
+
     return State(; X, cell_type, adh_bonds, u, v)
 end
 
