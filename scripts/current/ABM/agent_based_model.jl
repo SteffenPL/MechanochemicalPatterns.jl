@@ -15,15 +15,21 @@ const R_max = 20.0
 
 include("definition.jl")
 include("forces.jl")
+include("signals.jl")
 include("simulation.jl")
 
 
 p = load_parameters()
 s = init_state(p)
 cache = init_cache(p, s)
-
 states = simulate(s, p, cache)
 
 include("plots.jl")
 
-volume(s.u)
+function doit()
+    p = load_parameters()
+    s = init_state(p)
+    cache = init_cache(p, s)
+    states = simulate(s, p, cache)
+    include("plots.jl")
+end

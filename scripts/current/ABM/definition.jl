@@ -16,6 +16,17 @@ const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
     t::Float64 = 0.0
 end
 
+function partialcopy(s, lazy = false)
+    return State(; 
+        X = copy(s.X), 
+        P = copy(s.P), 
+        adh_bonds = deepcopy(s.adh_bonds), 
+        cell_type = s.cell_type,  # contant cell types 
+        u = lazy ? s.u : copy(s.u), 
+        v = lazy ? s.v : copy(s.v), 
+        t = s.t
+        )
+end
 
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
@@ -67,9 +78,6 @@ function init_state(p)
     u = [p.signals.types.u.init((x,y,z), p) for x in xs, y in ys, z in zs]
     v = similar(u)
     v .= 0.0
-    
-    prob = ODEProblem(ode_rhs, u, (0.0, 1.0), p.signals.types.u, p.signals.types.u.p)
-    integrator = init_ode_integrator(prob, p.signals.types.u)
 
     return State(; X, cell_type, adh_bonds, u, v)
 end
@@ -111,7 +119,19 @@ function init_cache(p, s)
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
 
-    c = Cache(; st = sht)
+
+    function rhs!(dz, z, p, t)
+        dz .= 0.0
+        laplace!(dz, z, p_ode.D, p_ode.dV, 1.0)
+    end
+
+    xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+    p_ode = (; D = p.signals.types.u.D, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+
+    ode_prob = ODEProblem(rhs!, s.u, (0.0, p.sim.t_end), p_ode)
+    ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)
+
+    c = Cache(; st = sht, ode_prob, ode_integrator)
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
 

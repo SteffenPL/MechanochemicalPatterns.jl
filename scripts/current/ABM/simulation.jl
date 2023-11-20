@@ -10,6 +10,10 @@ function time_step!(s, p, cache)
     add_bonds!(s, p, cache)
     remove_bonds!(s, p, cache)
 
+
+    # do diffusion integration 
+    ode_time_step!(s, p, cache)
+
     # reset forces
     reset_forces!(s, p, cache)
 
@@ -33,8 +37,6 @@ function time_step!(s, p, cache)
 end
 
 
-
-
 function simulate(s, p, cache, callbacks = Function[])
 
     (; dt ) = p.sim
@@ -45,17 +47,23 @@ function simulate(s, p, cache, callbacks = Function[])
     resize_cache!(s, p, cache)
 
     t_unsaved = 0.0
+    t_lazy = 0.0
     n_steps = Int(round(p.sim.t_end / dt))
 
     prog = Progress(n_steps, 1, "Simulating... ")
     for k_step in 1:n_steps 
         time_step!(s, p, cache)
         s.t += dt 
+
+        # update solution vector
         if t_unsaved > p.sim.saveat
-            push!(states, deepcopy(s))
+            push!(states, partialcopy(s, t_lazy > p.signals.saveat))
             t_unsaved = 0.0
+            t_lazy = t_lazy > p.signals.saveat ? 0.0 : t_lazy
         end
         t_unsaved += dt
+        t_lazy += dt
+        
         next!(prog)
     end
 

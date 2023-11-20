@@ -13,6 +13,7 @@ begin
 
     fig = Figure(resolution = (1024, 768))
 
+    # create observable nodes
     i_slider = Slider(fig[2, 1], range = 1:length(states), startvalue = 1)
     
     X_node = @lift states[$(i_slider.value)].X
@@ -20,12 +21,14 @@ begin
 
     E_node = lift(i_slider.value) do i 
         bonds = states[i].adh_bonds
-        @show ne(bonds)
-        Tuple{SVecD,SVecD}[ (states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
+        Tuple{SVecD,SVecD}[(states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
     end
+
+    u_node = @lift states[$(i_slider.value)].u
 
     t_node = @lift @sprintf "Time = %.1fh" states[$(i_slider.value)].t
 
+    # create plot
     ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
 
     xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
@@ -45,6 +48,11 @@ begin
     if show_bonds
         linesegments!(E_node, color = bond_color, linewidth = 2; transparency)
     end 
+
+    # create signal plot
+    ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
+    volume!(u_node)
+
 
     display(fig)
 

@@ -13,12 +13,13 @@
         margin = 0.5  # 0-1
 
 [signals]
-    dx = 0.01   # μm
-    grid = [500, 500, 150]
+    dx = 1.0   # μm
+    grid = [50, 50, 15]
     dt = 0.001  # hr
+    saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 0.1                     # unit ???
+        D = 0.1   # μm²/hr
         init = """julia: 
                         function (x, p)
                             std = 25.0

@@ -1,5 +1,5 @@
 
-function load_parameters(fn = "scripts/drafts/parameters.toml")
+function load_parameters(fn = "scripts/current/parameters.toml")
     p_dict = TOML.parsefile(fn)
     return recursive_namedtuple(p_dict)
 end
