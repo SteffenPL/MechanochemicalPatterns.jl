@@ -2,8 +2,10 @@
 begin
     # figure configuration
     colors = [:magenta, :lightgreen]
-    bond_color = :black
+    bond_color = :darkorange
+    show_concentration = true
     show_bonds = true
+    show_polarities = true
     show_soft_spheres = false
     transparency = false
     alpha = clamp(200 / length(states[end].X), 0.01, 0.2)
@@ -23,6 +25,8 @@ begin
         bonds = states[i].adh_bonds
         Tuple{SVecD,SVecD}[(states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
     end
+
+    P_node = @lift states[$(i_slider.value)].P
 
     u_node = @lift states[$(i_slider.value)].u
 
@@ -49,11 +53,21 @@ begin
         linesegments!(E_node, color = bond_color, linewidth = 2; transparency)
     end 
 
+    # if show_polarities
+    #     P_n = lift(i_slider.value) do i 
+    #         bonds = states[i].adh_bonds
+    #         Tuple{SVecD,SVecD}[(states[i].X[j], states[i].X[j] + 10 * states[i].P[j]) for j in eachindex(states[i].X) ]
+    #     end
+        
+    #     linesegments!(P_n, color = :black; transparency)
+    # end
+
     # create signal plot
-    ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
-    volume!(u_node)
-
-
+    if show_concentration
+        ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
+        volume!(u_node, colorrange = (0,1))
+    end
+    
     display(fig)
 
     for i in 1:10:length(states)

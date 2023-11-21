@@ -43,6 +43,9 @@ end
     const repulsion_stiffness::Vector{Float64} = Float64[]
     const adhesion_stiffness::Vector{Float64} = Float64[]
     const attraction_stiffness::Vector{Float64} = Float64[]
+    const new_adh_rate::Vector{Float64} = Float64[]
+    const break_adh_rate::Vector{Float64} = Float64[]
+    const run_time::Vector{Float64} = Float64[]
 
     # ODE problem for the signals
     const ode_prob::ODEP = nothing
@@ -68,6 +71,10 @@ function init_state(p)
 
     # initial cell positions
     X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+    P = [ randn(SVecD) for i in 1:N]
+    for i in 1:N
+        P[i] = P[i] ./ norm(P[i])
+    end
 
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
@@ -106,6 +113,8 @@ function update_cache!(s, p, cache)
             update_p(:repulsion_stiffness)
             update_p(:adhesion_stiffness)
             update_p(:attraction_stiffness)
+            update_p(:new_adh_rate)
+            update_p(:break_adh_rate)
         end
         cache.outdated = false
     end
@@ -123,10 +132,11 @@ function init_cache(p, s)
     function rhs!(dz, z, p, t)
         dz .= 0.0
         laplace!(dz, z, p_ode.D, p_ode.dV, 1.0)
+        @. dz -= p.decay * z
     end
 
     xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-    p_ode = (; D = p.signals.types.u.D, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+    p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
 
     ode_prob = ODEProblem(rhs!, s.u, (0.0, p.sim.t_end), p_ode)
     ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)

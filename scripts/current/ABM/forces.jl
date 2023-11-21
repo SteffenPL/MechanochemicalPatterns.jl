@@ -7,14 +7,17 @@ end
 
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
+    z = p.env.domain.max[3]
+    scale = p.env.domain.size[3]
     for i in eachindex(s.X)
-        cache.F[i] += randn(SVecD) * p.cells.sigma * inv_sqrt_dt
+        cache.F[i] += randn(SVecD) * (1 + (z - s.X[i][3])/scale) * p.cells.sigma * inv_sqrt_dt
     end
 end
 
 function add_bonds!(s, p, cache, i, j, Xi, Xj, dij)
     if dij < 2*p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
-        if rand() < 1.0 - exp(-p.cells.new_adh_rate * p.sim.dt)
+        rate = s.cell_type[i] == s.cell_type[j] ? cache.new_adh_rate[i] : p.cells.interaction.new_adh_rate
+        if rand() < 1.0 - exp(-rate * p.sim.dt)
             add_edge!(s.adh_bonds, i, j, 0.0)
         end
     end
@@ -25,7 +28,7 @@ add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, 2*p.c
 function apply_interaction_kernel!(s, p, cache, fnc, R)
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R_max)
+        for j in neighbours(cache.st, Xi, R)
             if i < j 
                 Xj = s.X[j]
                 dij = dist(Xi, Xj)
@@ -40,8 +43,9 @@ function remove_bonds!(s, p, cache)
     for e in edges(bonds)
         i, j = src(e), dst(e)
         dij = dist(s.X[i], s.X[j])
-
-        if bonds[i,j] > p.cells.adh_duration # || dij > 4*p.cells.R_adh
+        rate = s.cell_type[i] == s.cell_type[j] ? cache.break_adh_rate[i] : p.cells.interaction.break_adh_rate
+        
+        if rand() < 1.0 - exp(-rate * p.sim.dt) || dij > 4*p.cells.R_adh
             rem_edge!(bonds, i, j)
         else
             bonds[i,j] += p.sim.dt
@@ -54,7 +58,12 @@ function compute_adhesive_forces!(s, p, cache)
     for e in edges(bonds)
         i, j = src(e), dst(e)
         Xi, Xj = s.X[i], s.X[j]
-        k = cache.adhesion_stiffness[i] + cache.adhesion_stiffness[j]
+        k = ( s.cell_type[i] == s.cell_type[j] 
+            ? 
+            cache.adhesion_stiffness[i] + cache.adhesion_stiffness[j]
+            :
+            p.cells.interaction.adhesion_stiffness
+            )
         cache.F[i] += k * (Xj - Xi)
         cache.F[j] -= k * (Xj - Xi)
     end
@@ -110,7 +119,7 @@ end
 function project_non_overlap!(s, p, cache)
     for i in eachindex(s.X)
         Ri = cache.R_hard[i]
-        for j in neighbours(cache.st, s.X[i], R_max) # 1:i-1
+        for j in neighbours(cache.st, s.X[i], 2*Ri) # 1:i-1
             if i < j 
                 dij² = dist²(s.X[i], s.X[j])
                 Rij = Ri + cache.R_hard[j]

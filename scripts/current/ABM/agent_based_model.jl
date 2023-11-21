@@ -1,6 +1,6 @@
 # Note: all quantities carry units in terms of μm and hours.
 using Revise
-using TOML, Random, Printf
+using TOML, Random, Printf, LinearAlgebra, Random
 using GLMakie, StaticArrays, ProtoStructs, ProgressMeter, Accessors, Graphs
 using BoundedDegreeGraphs, SpatialHashTables
 using OrdinaryDiffEq
@@ -18,6 +18,7 @@ include("forces.jl")
 include("signals.jl")
 include("simulation.jl")
 
+Random.seed!(4)
 
 p = load_parameters()
 s = init_state(p)

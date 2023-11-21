@@ -12,6 +12,7 @@ function time_step!(s, p, cache)
 
 
     # do diffusion integration 
+    add_source!(s, p, cache)
     ode_time_step!(s, p, cache)
 
     # reset forces
@@ -57,7 +58,8 @@ function simulate(s, p, cache, callbacks = Function[])
 
         # update solution vector
         if t_unsaved > p.sim.saveat
-            push!(states, partialcopy(s, t_lazy > p.signals.saveat))
+            push!(states, deepcopy(s))
+            #push!(states, partialcopy(s, t_lazy > p.signals.saveat))
             t_unsaved = 0.0
             t_lazy = t_lazy > p.signals.saveat ? 0.0 : t_lazy
         end

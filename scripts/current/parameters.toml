@@ -4,13 +4,13 @@
     gravity = [0.0,0.0,-0.03]  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
 
 [sim]
-    t_end   = "julia: 5*24.0"  # hr
-    dt      = 0.01  # hr
+    t_end   = "julia: 14*24.0"  # hr
+    dt      = 0.05  # hr
     saveat  = 0.1   # hr
 
     [sim.collision_detection]
-        boxsize = 10.0  # μm
-        margin = 0.5  # 0-1
+        boxsize = 22.0  # μm
+        margin = 0.2  # 0-1
 
 [signals]
     dx = 1.0   # μm
@@ -19,26 +19,26 @@
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 0.1   # μm²/hr
+        D = 0.15   # μm²/hr
+        decay = 0.0001
         init = """julia: 
                         function (x, p)
                             std = 25.0
-                            return exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
+                            return 0 * exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
                         end
                         """
 
 [cells]
     R_soft = 10.0        # μm
     R_hard = 5.0        # μm 
-    R_adh = 10.0         # μm
+    R_adh = 11.0         # μm
     R_attract = 10.0     # μm
     R_interact = 10.0    # μm (maximal interaction range)
     lifespan = 24.0     # hr
-    repulsion_stiffness = 0.5
-    sigma = 0.5         # μm / √hr (for random walk)
+    repulsion_stiffness = 0.7
+    sigma = 0.05         # μm / √hr (for random walk)
 
-    new_adh_rate = 1.0  # 1/hr
-    adh_duration = 20.0  # hr
+    
 
     init = {R = 100.0}
 
@@ -51,18 +51,27 @@
             end"""
         domain_bounds = { center = [0.0, 0.0, 75.0], size = [500.0, 500.0, 150.0] }
 
+    [cells.interaction]
+        adhesion_stiffness = 0.1
+        new_adh_rate = 0.5  # 1/hr
+        break_adh_rate = 0.5  # hr
+
     [cells.types.proximal]
         ID = 1
         N = 600
-        adhesion_stiffness = 0.0
+        adhesion_stiffness = 0.16
         attraction_stiffness = 0.0
+        new_adh_rate = 0.9  # 1/hr
+        break_adh_rate = 0.5  # hr
 
 
     [cells.types.distal]
         ID = 2
         N = 300
-        adhesion_stiffness = 0.0
+        adhesion_stiffness = 0.2
         attraction_stiffness = 0.0
+        new_adh_rate = 1.0  # 1/hr
+        break_adh_rate = 0.6  # hr
 
         [cells.types.distal.init_pos.custom_distr]
                 distr = """julia: 
@@ -73,7 +82,7 @@
                             @. x = dom.center + (0.5 - x) .* dom.size
                         else
                             sigma = 50
-                            center = (0, 100, 50)
+                            center = (0, -100, 50)
                             randn!(x)
                             @. x = x * sigma + center
                         end
@@ -89,7 +98,4 @@
 
 
         # init_pos = {normal = {mean = [0.0,50,75], std = [30,30,15]}}
-
-    [cells.interaction]
-        adhesion_stiffness = 1.5
 
