@@ -15,7 +15,7 @@ function add_source!(s, p, cache)
             rel = (s.X[i] - p.env.domain.min) ./ p.env.domain.size 
             I = round.(Int64, rel .* p.signals.grid) 
             I = clamp.(I, (1,1,1), p.signals.grid)
-            s.u[I[1],I[2],I[3]] += 0.8 * p.sim.dt
+            s.u[I[1],I[2],I[3]] += 0.4 * p.sim.dt
         end
     end
 end

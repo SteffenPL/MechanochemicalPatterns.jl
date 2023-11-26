@@ -65,7 +65,7 @@ begin
     # create signal plot
     if show_concentration
         ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
-        volume!(u_node, colorrange = (0,1))
+        volume!(u_node, colorrange = (0,1.5))
     end
     
     display(fig)
