@@ -24,9 +24,12 @@ Random.seed!(4)
 p = load_parameters()
 s = init_state(p)
 cache = init_cache(p, s)
-states = simulate(s, p, cache)
 
-fig, s_obs = init_plot(states[1], p)
+fig, s_obs = init_plot(s, p)
+display(fig)
+states = simulate(s, p, cache, (update_plot_callback!(fig, s_obs, 0.0),))
+
 add_slider!(fig, s_obs, states, p)
 display(fig)
 play_animation!(fig, s_obs, states, 10)
+

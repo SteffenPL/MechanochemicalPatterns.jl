@@ -1,3 +1,11 @@
+function get_hetero_param(s, p, cache, i, j, sym)
+    if s.cell_type[i] == s.cell_type[j]
+        return getproperty(cache, sym)[i]
+    else
+        return getproperty(p.cells.interaction, sym)
+    end
+end
+
 
 function reset_forces!(s, p, cache)
     for i in eachindex(cache.F)
@@ -23,8 +31,9 @@ function update_polarity!(s, p, cache)
 end
 
 function add_self_prop!(s, p, cache)
+    dt_factor = p.cells.v_self_prop * p.env.damping
     for i in eachindex(s.X)
-        cache.F[i] += s.P[i] * p.cells.v_self_prop * p.sim.dt
+        cache.F[i] += s.P[i] * dt_factor
     end
 end
 
@@ -57,7 +66,7 @@ function remove_bonds!(s, p, cache)
     for e in edges(bonds)
         i, j = src(e), dst(e)
         dij = dist(s.X[i], s.X[j])
-        rate = s.cell_type[i] == s.cell_type[j] ? cache.break_adh_rate[i] : p.cells.interaction.break_adh_rate
+        rate = get_hetero_param(s, p, cache, i, j, :break_adh_rate)
         
         if rand() < 1.0 - exp(-rate * p.sim.dt) || dij > 4*p.cells.R_adh
             rem_edge!(bonds, i, j)
@@ -68,18 +77,15 @@ function remove_bonds!(s, p, cache)
 end
 
 function compute_adhesive_forces!(s, p, cache)
-    bonds = s.adh_bonds
-    for e in edges(bonds)
-        i, j = src(e), dst(e)
-        Xi, Xj = s.X[i], s.X[j]
-        k = ( s.cell_type[i] == s.cell_type[j] 
-            ? 
-            cache.adhesion_stiffness[i] + cache.adhesion_stiffness[j]
-            :
-            p.cells.interaction.adhesion_stiffness
-            )
-        cache.F[i] += k * (Xj - Xi)
-        cache.F[j] -= k * (Xj - Xi)
+    if p.cell.use_adhesion
+        bonds = s.adh_bonds
+        for e in edges(bonds)
+            i, j = src(e), dst(e)
+            Xi, Xj = s.X[i], s.X[j]
+            k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
+            cache.F[i] += k * (Xj - Xi)
+            cache.F[j] -= k * (Xj - Xi)
+        end
     end
 end
 
@@ -101,7 +107,8 @@ end
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_attract[i] + cache.R_attract[j] 
     if 0.0 < dij < Rij
-        k = cache.attraction_stiffness[i] + cache.attraction_stiffness[j]
+        k = 
+        k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
         cache.F[i] -= (Rij - dij) * k / dij * (Xi - Xj) 
         cache.F[j] += (Rij - dij) * k / dij * (Xi - Xj) 
     end

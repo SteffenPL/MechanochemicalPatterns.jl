@@ -7,8 +7,8 @@ function time_step!(s, p, cache)
     updatetable!(cache.st, s.X)
 
     # cell events
-    add_bonds!(s, p, cache)
-    remove_bonds!(s, p, cache)
+    #add_bonds!(s, p, cache)
+    #remove_bonds!(s, p, cache)
 
 
     # do diffusion integration 
@@ -19,12 +19,16 @@ function time_step!(s, p, cache)
     reset_forces!(s, p, cache)
 
     # update forces
-    compute_adhesive_forces!(s, p, cache)
+    #compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     compute_gravity_forces!(s, p, cache)
 
     # add noise 
     add_random_forces!(s, p, cache)
+
+    # polarity dynamics
+    update_polarity!(s, p, cache)
+    add_self_prop!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
