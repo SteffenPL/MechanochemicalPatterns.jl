@@ -4,7 +4,7 @@
     gravity = [0.0,0.0,0.0]  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
 
 [sim]
-    t_end   = "julia: 14*24.0"  # hr
+    t_end   = "julia: 18*24.0"  # hr
     dt      = 0.05  # hr
     saveat  = 0.1   # hr
 
@@ -19,7 +19,7 @@
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 0.15   # μm²/hr
+        D = 0.12   # μm²/hr
         decay = 0.0001
         init = """julia: 
                         function (x, p)
