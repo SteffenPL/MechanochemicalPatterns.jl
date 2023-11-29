@@ -29,16 +29,16 @@
                         """
 
 [cells]
-    R_soft = 11.0        # μm
+    R_soft = 10.0        # μm
     R_hard = 6.0         # μm 
-    R_adh = 12.0         # μm
+    R_adh = 11.0         # μm
     R_attract = 25.0     # μm
     R_interact = 10.0    # μm (maximal interaction range)
     lifespan = 24.0      # hr
-    repulsion_stiffness = 1.0
+    repulsion_stiffness = 1.2
     sigma = 0.00         # μm / √hr (for additive white noise)
     sigma_p = 0.5       # μm / √hr (for active brownian particles, acts on polarity)
-    v_self_prop = 11.0      # μm/hr (speed of cells in cluster)
+    v_self_prop = 12.0      # μm/hr (speed of cells in cluster)
     
     init = {R = 80.0}
 
@@ -52,29 +52,29 @@
         domain_bounds = { center = [0.0, 0.0, 150.0], size = [500.0, 500.0, 300.0] }
 
     [cells.interaction]
-        attraction_stiffness = 0.0
-        adhesion_stiffness = 0.5
+        attraction_stiffness = 0.4
+        adhesion_stiffness = 0.15
         new_adh_rate = 0.5  # 1/hr
         break_adh_rate = 0.5  # hr
 
     [cells.types.proximal]
         ID = 1
-        N = 600
-        adhesion_stiffness = 0.6
-        attraction_stiffness = 0.0
-        new_adh_rate = 2.0  # 1/hr
-        break_adh_rate = 0.8  # hr
+        N = 400
+        adhesion_stiffness = 0.3
+        attraction_stiffness = 0.6
+        new_adh_rate = 0.9  # 1/hr
+        break_adh_rate = 0.5  # hr
 
 
     [cells.types.distal]
         ID = 2
-        N = 600
-        adhesion_stiffness = 0.6
-        attraction_stiffness = 0.0
-        new_adh_rate = 2.0  # 1/hr
+        N = 400
+        adhesion_stiffness = 0.2
+        attraction_stiffness = 0.6
+        new_adh_rate = 1.0  # 1/hr
         break_adh_rate = 0.6  # hr
 
-        [cells.types.distal.init_pos.custom_distr]
+        [cells.types.distal.init_pos_old.custom_distr]
                 distr = """julia: 
                     function (x, p)
                         dom = p.env.domain

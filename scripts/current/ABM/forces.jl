@@ -77,15 +77,13 @@ function remove_bonds!(s, p, cache)
 end
 
 function compute_adhesive_forces!(s, p, cache)
-    if p.cell.use_adhesion
-        bonds = s.adh_bonds
-        for e in edges(bonds)
-            i, j = src(e), dst(e)
-            Xi, Xj = s.X[i], s.X[j]
-            k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-            cache.F[i] += k * (Xj - Xi)
-            cache.F[j] -= k * (Xj - Xi)
-        end
+    bonds = s.adh_bonds
+    for e in edges(bonds)
+        i, j = src(e), dst(e)
+        Xi, Xj = s.X[i], s.X[j]
+        k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
+        cache.F[i] += k * (Xj - Xi)
+        cache.F[j] -= k * (Xj - Xi)
     end
 end
 
