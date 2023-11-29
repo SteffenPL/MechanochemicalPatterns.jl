@@ -26,4 +26,4 @@ scatter!(ax, df_init.POSITION_X, df_init.POSITION_Y, df_init.POSITION_Z, markers
 
 save(joinpath(config["output_dir"], "3D_tracking_data.png"), fig)
 
-display(fig) 
+fig

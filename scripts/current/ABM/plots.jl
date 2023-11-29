@@ -3,7 +3,7 @@ begin
     # figure configuration
     colors = [:magenta, :lightgreen]
     bond_color = :darkorange
-    show_concentration = true
+    show_concentration = false
     show_bonds = true
     show_polarities = true
     show_soft_spheres = false
