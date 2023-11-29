@@ -1,36 +1,27 @@
-
-begin
-    # figure configuration
-    colors = [:magenta, :lightgreen]
-    bond_color = :darkorange
-    show_concentration = false
-    show_bonds = true
-    show_polarities = true
-    show_soft_spheres = false
-    transparency = false
-    alpha = clamp(200 / length(states[end].X), 0.01, 0.2)
+function init_plot(s, p;
+                    colors = [:magenta, :lightgreen],
+                    bond_color = :darkorange,
+                    show_concentration = false,
+                    show_bonds = true,
+                    show_polarities = true,
+                    show_soft_spheres = false,
+                    transparency = false,
+                    alpha = clamp(200 / length(s.X), 0.01, 0.2)
+                    )
 
     transparent_colors = transparency ? (c -> (c,alpha)).(colors) : colors 
     bond_color = transparency ? (bond_color, 0.5) : bond_color
 
     fig = Figure(resolution = (1024, 768))
 
-    # create observable nodes
-    i_slider = Slider(fig[2, 1], range = 1:length(states), startvalue = 1)
-    
-    X_node = @lift states[$(i_slider.value)].X
-    ct = @lift states[$(i_slider.value)].cell_type
+    state_obs = Observable(s)
 
-    E_node = lift(i_slider.value) do i 
-        bonds = states[i].adh_bonds
-        Tuple{SVecD,SVecD}[(states[i].X[src(e)], states[i].X[dst(e)]) for e in edges(bonds) ]
-    end
-
-    P_node = @lift states[$(i_slider.value)].P
-
-    u_node = @lift states[$(i_slider.value)].u
-
-    t_node = @lift @sprintf "Time = %.1fh" states[$(i_slider.value)].t
+    X_node = @lift $state_obs.X
+    ct = @lift $state_obs.cell_type
+    E_node = @lift Tuple{SVecD,SVecD}[($state_obs.X[src(e)], $state_obs.X[dst(e)]) for e in edges($state_obs.adh_bonds) ]
+    P_node = @lift $state_obs.P
+    u_node = @lift $state_obs.u
+    t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
 
     # create plot
     ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
@@ -67,11 +58,25 @@ begin
         ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
         volume!(u_node, colorrange = (0,1.5))
     end
-    
-    display(fig)
 
-    for i in 1:10:length(states)
-        i_slider.value[] = i
+    return fig, state_obs
+end
+
+function update_plot!(fig, state_obs, s, p)
+    state_obs[] = s
+end
+
+function add_slider!(fig, state_obs, states, p)
+    i_slider = Slider(fig[end+1,1], range = 1:length(states), startvalue = 1)
+    on(i_slider.value) do i
+        update_plot!(fig, state_obs, states[i], p)
+    end
+    return i_slider
+end
+
+function play_animation!(fig, state_obs, states, skip = 10)
+    for i in 1:skip:length(states)
+        state_obs[] = states[i]
         sleep(0.01)
     end
 end

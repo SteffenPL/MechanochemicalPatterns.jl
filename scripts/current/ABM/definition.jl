@@ -71,10 +71,7 @@ function init_state(p)
 
     # initial cell positions
     X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
-    P = [ randn(SVecD) for i in 1:N]
-    for i in 1:N
-        P[i] = P[i] ./ norm(P[i])
-    end
+    P = [ random_direction(Dim) for i in 1:N]
 
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
@@ -86,7 +83,7 @@ function init_state(p)
     v = similar(u)
     v .= 0.0
 
-    return State(; X, cell_type, adh_bonds, u, v)
+    return State(; X, P, cell_type, adh_bonds, u, v)
 end
 
 function resize_cache!(s, p, cache)

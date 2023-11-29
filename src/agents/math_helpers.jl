@@ -8,3 +8,8 @@ end
 
 dist²(a::SVector,b::SVector) = sum(x -> x^2, a-b)
 dist(a,b) = sqrt(dist²(a,b))
+
+function random_direction(Dim)
+    v = SVector{Dim,Float64}(randn(Dim))
+    return v ./ norm(v)
+end

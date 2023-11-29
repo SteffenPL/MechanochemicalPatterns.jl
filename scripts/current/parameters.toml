@@ -36,8 +36,10 @@
     R_interact = 10.0    # μm (maximal interaction range)
     lifespan = 24.0      # hr
     repulsion_stiffness = 0.7
-    sigma = 0.05         # μm / √hr (for random walk)
-
+    sigma = 0.00         # μm / √hr (for additive white noise)
+    sigma_p = 0.05       # μm / √hr (for active brownian particles, acts on polarity)
+    v_self_prop = 1.0      # μm/hr (speed of cells in cluster)
+    
     init = {R = 160.0}
 
     [cells.init_pos.custom_distr]
@@ -56,7 +58,7 @@
 
     [cells.types.proximal]
         ID = 1
-        N = 4000
+        N = 400
         adhesion_stiffness = 0.15
         attraction_stiffness = 0.0
         new_adh_rate = 0.9  # 1/hr
@@ -65,7 +67,7 @@
 
     [cells.types.distal]
         ID = 2
-        N = 4000
+        N = 400
         adhesion_stiffness = 0.2
         attraction_stiffness = 0.0
         new_adh_rate = 1.0  # 1/hr

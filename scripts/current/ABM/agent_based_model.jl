@@ -17,6 +17,7 @@ include("definition.jl")
 include("forces.jl")
 include("signals.jl")
 include("simulation.jl")
+include("plots.jl")
 
 Random.seed!(4)
 
@@ -25,12 +26,7 @@ s = init_state(p)
 cache = init_cache(p, s)
 states = simulate(s, p, cache)
 
-include("plots.jl")
-
-function doit()
-    p = load_parameters()
-    s = init_state(p)
-    cache = init_cache(p, s)
-    states = simulate(s, p, cache)
-    include("plots.jl")
-end
+fig, s_obs = init_plot(states[1], p)
+add_slider!(fig, s_obs, states, p)
+display(fig)
+play_animation!(fig, s_obs, states, 10)

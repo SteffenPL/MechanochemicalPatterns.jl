@@ -62,6 +62,9 @@ function simulate(s, p, cache, callbacks = Function[])
             #push!(states, partialcopy(s, t_lazy > p.signals.saveat))
             t_unsaved = 0.0
             t_lazy = t_lazy > p.signals.saveat ? 0.0 : t_lazy
+
+            # call callbacks as well
+            foreach(f -> f(s, p, cache), callbacks)
         end
         t_unsaved += dt
         t_lazy += dt

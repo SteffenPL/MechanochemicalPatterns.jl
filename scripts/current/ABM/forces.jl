@@ -14,6 +14,20 @@ function add_random_forces!(s, p, cache)
     end
 end
 
+# polarity dynamics 
+function update_polarity!(s, p, cache)
+    for i in eachindex(s.X)
+        s.P[i] += randn(SVecD) * p.cells.sigma_p * sqrt(p.sim.dt)
+        s.P[i] /= norm(s.P[i])
+    end
+end
+
+function add_self_prop!(s, p, cache)
+    for i in eachindex(s.X)
+        cache.F[i] += s.P[i] * p.cells.v_self_prop * p.sim.dt
+    end
+end
+
 function add_bonds!(s, p, cache, i, j, Xi, Xj, dij)
     if dij < 2*p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
         rate = s.cell_type[i] == s.cell_type[j] ? cache.new_adh_rate[i] : p.cells.interaction.new_adh_rate

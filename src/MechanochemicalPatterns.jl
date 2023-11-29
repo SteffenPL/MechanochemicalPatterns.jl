@@ -1,5 +1,6 @@
 module MechanochemicalPatterns
-    using TOML, Random, StaticArrays, GLMakie
+    using TOML, Random, LinearAlgebra 
+    using StaticArrays, GLMakie
 
     include("agents/math_helpers.jl")
     
@@ -14,7 +15,7 @@ module MechanochemicalPatterns
     
     export load_parameters, eval_param, get_param
 
-    export dist, dist²
+    export dist, dist², random_direction
 
     export laplace!
 end
