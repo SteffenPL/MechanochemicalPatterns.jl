@@ -105,7 +105,6 @@ end
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_attract[i] + cache.R_attract[j] 
     if 0.0 < dij < Rij
-        k = 
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
         cache.F[i] -= (Rij - dij) * k / dij * (Xi - Xj) 
         cache.F[j] += (Rij - dij) * k / dij * (Xi - Xj) 
@@ -119,7 +118,7 @@ function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
-    R_int = 2*p.cells.R_interact
+    R_int = p.cells.R_interact
     for i in eachindex(s.X)
         Xi = s.X[i]
         for j in neighbours(cache.st, Xi, R_int)  # 1:i-1

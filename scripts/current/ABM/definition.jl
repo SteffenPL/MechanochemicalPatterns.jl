@@ -11,6 +11,7 @@ const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
     const P::Vector{SVecD} = SVecD[]  # polarity
     const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
+    const cell_age::Vector{Float64} = Float64[]
     const u::Array{Float64,Dim} = zeros(0,0,0)
     const v::Array{Float64,Dim} = zeros(0,0,0)
     t::Float64 = 0.0
@@ -73,6 +74,9 @@ function init_state(p)
     X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
     P = [ random_direction(Dim) for i in 1:N]
 
+    # initial age 
+    cell_age = [ p.cells.lifespan * rand() for i in 1:N ]
+    
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
 
@@ -83,17 +87,22 @@ function init_state(p)
     v = similar(u)
     v .= 0.0
 
-    return State(; X, P, cell_type, adh_bonds, u, v)
+    return State(; X, P, cell_type, cell_age, adh_bonds, u, v)
 end
 
 function resize_cache!(s, p, cache)
-    cache.N = length(s.X)
-    for prop_name in propertynames(cache) 
-        prob = getproperty(cache, prop_name)
-        if prob isa Vector 
-            resize!(prob, cache.N)
+    if cache.N != length(s.X)
+        cache.N = length(s.X)
+        for prop_name in propertynames(cache) 
+            prob = getproperty(cache, prop_name)
+            if prob isa Vector 
+                resize!(prob, cache.N)
+            end 
         end 
-    end 
+
+        resize!(cache.st, cache.N)
+        cache.outdated = true
+    end
 end
 
 function update_cache!(s, p, cache)

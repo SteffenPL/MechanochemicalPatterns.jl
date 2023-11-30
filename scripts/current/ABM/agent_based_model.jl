@@ -15,6 +15,7 @@ const R_max = 20.0
 
 include("definition.jl")
 include("forces.jl")
+include("events.jl")
 include("signals.jl")
 include("simulation.jl")
 include("plots.jl")
@@ -25,11 +26,16 @@ begin
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p)
+    fig, s_obs = init_plot(s, p; show_polarities = true)
     display(fig)
-    states = simulate(s, p, cache, (update_plot_callback!(fig, s_obs, 0.05),))
+    
+    states = [deepcopy(s)]
+    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
 end
 add_slider!(fig, s_obs, states, p)
 display(fig)
 play_animation!(fig, s_obs, states, 10)
 
+record(fig, "test2.mp4", 1:1:length(states); framerate = 30) do i
+    update_plot!(fig, s_obs, states[i], p)
+end

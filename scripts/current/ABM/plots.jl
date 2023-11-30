@@ -19,9 +19,9 @@ function init_plot(s, p;
     X_node = @lift $state_obs.X
     ct = @lift $state_obs.cell_type
     E_node = @lift Tuple{SVecD,SVecD}[($state_obs.X[src(e)], $state_obs.X[dst(e)]) for e in edges($state_obs.adh_bonds) ]
-    P_node = @lift $state_obs.P
     u_node = @lift $state_obs.u
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
+    R_node = @lift cache.R_hard[1:length($state_obs.X)]
 
     # create plot
     ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
@@ -31,7 +31,7 @@ function init_plot(s, p;
     zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
 
     meshscatter!(X_node, 
-                markersize = p.cells.R_hard, space = :data, 
+                markersize = R_node, space = :data, 
                 color = ct, colormap = colors; transparency)
 
     if show_soft_spheres
@@ -44,14 +44,13 @@ function init_plot(s, p;
         linesegments!(E_node, color = bond_color, linewidth = 2; transparency)
     end 
 
-    # if show_polarities
-    #     P_n = lift(i_slider.value) do i 
-    #         bonds = states[i].adh_bonds
-    #         Tuple{SVecD,SVecD}[(states[i].X[j], states[i].X[j] + 10 * states[i].P[j]) for j in eachindex(states[i].X) ]
-    #     end
+    if show_polarities
+        P_n = lift(state_obs) do s 
+            Tuple{SVecD,SVecD}[(s.X[j], s.X[j] + p.cells.R_soft * s.P[j]) for j in eachindex(s.X) ]
+        end
         
-    #     linesegments!(P_n, color = :black; transparency)
-    # end
+        linesegments!(P_n, color = :black; transparency)
+    end
 
     # create signal plot
     if show_concentration

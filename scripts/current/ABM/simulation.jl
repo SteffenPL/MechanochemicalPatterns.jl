@@ -1,19 +1,20 @@
 
 function time_step!(s, p, cache) 
 
+    cell_divisions!(s, p, cache)
 
     # update cache (in case of cell division)
     update_cache!(s, p, cache)
     updatetable!(cache.st, s.X)
 
     # cell events
-    add_bonds!(s, p, cache)
-    remove_bonds!(s, p, cache)
+    #add_bonds!(s, p, cache)
+    #remove_bonds!(s, p, cache)
 
 
     # do diffusion integration 
-    add_source!(s, p, cache)
-    ode_time_step!(s, p, cache)
+    # add_source!(s, p, cache)
+    # ode_time_step!(s, p, cache)
 
     # reset forces
     reset_forces!(s, p, cache)
@@ -42,12 +43,11 @@ function time_step!(s, p, cache)
 end
 
 
-function simulate(s, p, cache, callbacks = Function[])
+function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
 
     (; dt ) = p.sim
 
     s = deepcopy(s)
-    states = [deepcopy(s)]
 
     resize_cache!(s, p, cache)
 
