@@ -31,8 +31,8 @@ function time_step!(s, p, cache)
     add_random_forces!(s, p, cache)
 
     # polarity dynamics
-    update_polarity!(s, p, cache)
     add_self_prop!(s, p, cache)
+    update_polarity!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
@@ -56,7 +56,7 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
 
     t_unsaved = 0.0
     t_lazy = 0.0
-    n_steps = Int(round(p.sim.t_end / dt))
+    n_steps = Int(round( (p.sim.t_end-s.t) / dt))
 
     prog = Progress(n_steps, 1, "Simulating... ")
     for k_step in 1:n_steps 

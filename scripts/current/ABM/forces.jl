@@ -15,10 +15,8 @@ end
 
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
-    z = p.env.domain.max[3]
-    scale = p.env.domain.size[3]
     for i in eachindex(s.X)
-        cache.F[i] += randn(SVecD) * (1 + (z - s.X[i][3])/scale) * p.cells.sigma * inv_sqrt_dt
+        cache.F[i] += randn(SVecD) * p.cells.sigma * inv_sqrt_dt
     end
 end
 
@@ -27,13 +25,28 @@ function update_polarity!(s, p, cache)
     for i in eachindex(s.X)
         s.P[i] += randn(SVecD) * p.cells.sigma_p * sqrt(p.sim.dt)
         s.P[i] /= norm(s.P[i])
+
+        if cache.neighbour_count[i] > 6
+            nf = sqrt(sum(z -> z^2, cache.F[i]))
+            fp = @. cache.F[i]/nf - s.P[i]
+            align = dot(s.P[i], cache.F[i]) / nf
+            fp = fp
+            fp /= norm(fp)
+
+            s.P[i] += fp * (1-align) * p.cells.plithotaxis * p.sim.dt
+            s.P[i] /= norm(s.P[i])
+        end
     end
 end
 
 function add_self_prop!(s, p, cache)
     dt_factor = p.cells.v_self_prop * p.env.damping
     for i in eachindex(s.X)
-        cache.F[i] += s.P[i] * dt_factor
+        if cache.neighbour_count[i] > 6
+            cache.F[i] += s.P[i] * dt_factor
+        else 
+            cache.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
+        end
     end
 end
 
@@ -148,8 +161,8 @@ function compute_neighbourhood!(s, p, cache)
                 Xij = s.X[j] - s.X[i]
                 dij = sqrt(sum(z -> z^2, Xij))
                 Rij = Ri + cache.R_hard[j]
-                factor = Rij^p.cells.medium_alpha / dij^(1+p.cells.medium_alpha)
-                if dij > 0
+                if 0 < dij < 2*R_int
+                    factor = Rij^p.cells.medium_alpha / dij^(1+p.cells.medium_alpha)
                     cache.neighbour_avg[i] += Xij * factor
                     cache.neighbour_avg[j] -= Xij * factor
 

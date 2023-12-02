@@ -31,6 +31,7 @@ begin
     display(fig)
     
     states = [deepcopy(s)]
+    s = states[end]
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
 end
 add_slider!(fig, s_obs, states, p)
@@ -42,6 +43,6 @@ include("analysis.jl")
 fig, s_obs = init_plot(s, p; show_polarities = true)
 display(fig)
 
-record(fig, "test3.mp4", 1:1:length(states); framerate = 30) do i
+record(fig, "big2.mp4", 1:1:length(states); framerate = 30) do i
     update_plot!(fig, s_obs, states[i], p)
 end
