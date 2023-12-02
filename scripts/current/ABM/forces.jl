@@ -1,4 +1,4 @@
-function get_hetero_param(s, p, cache, i, j, sym)
+@inline function get_hetero_param(s, p, cache, i, j, sym)
     if s.cell_type[i] == s.cell_type[j]
         return getproperty(cache, sym)[i]
     else
@@ -133,11 +133,51 @@ function compute_interaction_forces!(s, p, cache)
     end
 end
 
+function compute_neighbourhood!(s, p, cache)
+    R_int = p.cells.R_interact
+    cache.neighbour_count .= 0
 
-function project_non_overlap!(s, p, cache)
+    for i in eachindex(cache.neighbour_avg)
+        cache.neighbour_avg[i] = zero(SVecD)
+    end
+
     for i in eachindex(s.X)
         Ri = cache.R_hard[i]
-        for j in neighbours(cache.st, s.X[i], 2*Ri) # 1:i-1
+        for j in neighbours(cache.st, s.X[i], R_int) # 1:i-1
+            if i < j 
+                Xij = s.X[j] - s.X[i]
+                dij = sqrt(sum(z -> z^2, Xij))
+                Rij = Ri + cache.R_hard[j]
+                factor = Rij^p.cells.medium_alpha / dij^(1+p.cells.medium_alpha)
+                if dij > 0
+                    cache.neighbour_avg[i] += Xij * factor
+                    cache.neighbour_avg[j] -= Xij * factor
+
+                    cache.neighbour_count[i] += 1
+                    cache.neighbour_count[j] += 1
+                end
+            end
+        end
+    end
+
+    # normalize
+    for i in eachindex(cache.neighbour_avg)
+        nc = cache.neighbour_count[i]
+        cache.neighbour_avg[i] *= (nc > 0 ? 1/nc : 0.0)
+    end
+end
+
+function compute_medium_forces!(s, p, cache)
+    for i in eachindex(s.X)
+        cache.F[i] += p.cells.medium_repulsion * cache.neighbour_avg[i]
+    end
+end
+
+function project_non_overlap!(s, p, cache)
+    R_int = p.cells.R_interact
+    for i in eachindex(s.X)
+        Ri = cache.R_hard[i]
+        for j in neighbours(cache.st, s.X[i], 2*R_int) # 1:i-1
             if i < j 
                 dij² = dist²(s.X[i], s.X[j])
                 Rij = Ri + cache.R_hard[j]

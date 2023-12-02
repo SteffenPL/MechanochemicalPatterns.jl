@@ -8,6 +8,7 @@ using MechanochemicalPatterns
 
 config = load_config()
 init_makie(config)
+set_theme!(theme_black())
 
 const Dim = 3
 const SVecD = SVector{Dim, Float64}
@@ -36,6 +37,11 @@ add_slider!(fig, s_obs, states, p)
 display(fig)
 play_animation!(fig, s_obs, states, 10)
 
-record(fig, "test2.mp4", 1:1:length(states); framerate = 30) do i
+include("analysis.jl")
+
+fig, s_obs = init_plot(s, p; show_polarities = true)
+display(fig)
+
+record(fig, "test3.mp4", 1:1:length(states); framerate = 30) do i
     update_plot!(fig, s_obs, states[i], p)
 end

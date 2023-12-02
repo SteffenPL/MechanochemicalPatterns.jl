@@ -8,7 +8,20 @@ function avg_locations(states, ct = 1:2)
     return [avg_location(s, ct) for s in states]
 end
 
-scatter(map(p -> p[1], avg_locations(states, 1:2)))
-scatter!(map(p -> p[1], avg_locations(states, 1)))
-scatter!(map(p -> p[1], avg_locations(states, 2)))
-display(current_figure())
+begin 
+    Figure()
+    yspan = (-80, 20)
+    Axis(current_figure()[1,1])
+    scatter!(map(p -> p[1], avg_locations(states, 1:2)), color = :white)
+    scatter!(map(p -> p[1], avg_locations(states, 1)), color = :magenta)
+    scatter!(map(p -> p[1], avg_locations(states, 2)), color = :lightgreen)
+    ylims!(yspan...)
+
+    Axis(current_figure()[1,2])
+    scatter!(map(p -> p[2], avg_locations(states, 1:2)), color = :white)
+    scatter!(map(p -> p[2], avg_locations(states, 1)), color = :magenta)
+    scatter!(map(p -> p[2], avg_locations(states, 2)), color = :lightgreen)
+    ylims!(yspan...)
+
+    display(current_figure())
+end

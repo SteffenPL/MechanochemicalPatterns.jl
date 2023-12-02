@@ -48,6 +48,10 @@ end
     const break_adh_rate::Vector{Float64} = Float64[]
     const run_time::Vector{Float64} = Float64[]
 
+    # neighbour avg directions 
+    const neighbour_avg::Vector{SVecD} = SVecD[]
+    const neighbour_count::Vector{Int} = Int[]
+
     # ODE problem for the signals
     const ode_prob::ODEP = nothing
     const ode_integrator::ODEI = nothing

@@ -6,6 +6,7 @@ function init_plot(s, p;
                     show_polarities = true,
                     show_soft_spheres = false,
                     transparency = false,
+                    bottom_plots = true,
                     alpha = clamp(200 / length(s.X), 0.01, 0.2)
                     )
 
@@ -50,6 +51,17 @@ function init_plot(s, p;
         end
         
         linesegments!(P_n, color = :black; transparency)
+    end
+
+    if bottom_plots 
+        dm = (p.env.domain.max[1], p.env.domain.max[2], p.env.domain.min[3])
+        X_xy_node = @lift [ Point3f(x[1], x[2],dm[3]) for x in $state_obs.X]
+        X_xz_node = @lift [ Point3f(x[1], dm[2],x[3]) for x in $state_obs.X]
+        X_yz_node = @lift [ Point3f(dm[1],x[2], x[3]) for x in $state_obs.X]
+
+        scatter!(X_xy_node, color = ct, colormap = colors, markersize = 5.0; transparency)
+        scatter!(X_xz_node, color = ct, colormap = colors, markersize = 5.0; transparency)
+        scatter!(X_yz_node, color = ct, colormap = colors, markersize = 5.0; transparency)
     end
 
     # create signal plot

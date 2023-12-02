@@ -8,9 +8,11 @@ function time_step!(s, p, cache)
     updatetable!(cache.st, s.X)
 
     # cell events
-    #add_bonds!(s, p, cache)
-    #remove_bonds!(s, p, cache)
+    add_bonds!(s, p, cache)
+    remove_bonds!(s, p, cache)
 
+    # medium interaction 
+    compute_neighbourhood!(s, p, cache)
 
     # do diffusion integration 
     # add_source!(s, p, cache)
@@ -23,6 +25,7 @@ function time_step!(s, p, cache)
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     compute_gravity_forces!(s, p, cache)
+    compute_medium_forces!(s, p, cache)
 
     # add noise 
     add_random_forces!(s, p, cache)
