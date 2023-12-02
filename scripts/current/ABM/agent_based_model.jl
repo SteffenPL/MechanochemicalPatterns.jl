@@ -43,6 +43,6 @@ include("analysis.jl")
 fig, s_obs = init_plot(s, p; show_polarities = true)
 display(fig)
 
-record(fig, "big2.mp4", 1:1:length(states); framerate = 30) do i
+record(fig, "big4.mp4", 1:20:length(states); framerate = 30) do i
     update_plot!(fig, s_obs, states[i], p)
 end
