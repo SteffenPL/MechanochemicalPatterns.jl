@@ -28,7 +28,7 @@ function compute_head_neighbours!(s, p, cache, k)
     polarity = 0.0
     for (j, o) in neighbours_bc(p, cache.st_heads, cache.Heads[k], R)
         djk² = dist²(p, cache.Heads[j], cache.Heads[k])
-        if djk² < R^2
+        if 0 < djk² < R^2
 
             Pj = s.P[s.colony[j][1]]
             Pk = s.P[s.colony[k][1]]
@@ -38,7 +38,7 @@ function compute_head_neighbours!(s, p, cache, k)
 
         end
     end
-    polarity = count > 0 ? polarity / count : 1.0
+    polarity = count > 0 ? polarity/count : 1.0
     return polarity 
 end
 

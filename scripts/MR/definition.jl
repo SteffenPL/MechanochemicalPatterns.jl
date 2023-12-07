@@ -132,14 +132,14 @@ end
 
 function presimulate(p, substeps = 1, bending = p.cells.bending_stiffness)
 
-    p = @set p.cells.n_disks = 1
     p = @set p.sim.dt = p.sim.dt / substeps 
     p = @set p.cells.bending_stiffness = bending
+    p_ = @set p.cells.n_disks = 1
+    
+    s = init_state(p_)
+    cache = init_cache(p_, s)
 
-    s = init_state(p)
-    cache = init_cache(p, s)
-
-    for k in 1:10 
+    for k in 2:p.cells.n_disks 
         n_steps =  round(Int64, (2 * p.cells.R_hard) / (p.cells.v_self_prop * p.sim.dt))
         for _ in 1:n_steps
             # update cache (in case of cell division)
