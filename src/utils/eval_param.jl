@@ -9,6 +9,15 @@ function eval_param(p, x::@NamedTuple{uniform::Vector})
     return x.uniform[1] + rand() * (x.uniform[2] - x.uniform[1])
 end
 
+function eval_param(p, x::@NamedTuple{uniform::String}) 
+    # Example: {uniform = "domain"}
+    if x.uniform == "domain"
+        return p.env.domain.min + rand(typeof(p.env.domain.max)) * (p.env.domain.max - p.env.domain.min)
+    else
+        @error "Unknown uniform distribution: $(x.uniform)"
+    end
+end
+
 function eval_param(p, x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) where {T1 <: Number, T2} 
     # Example: {normal = {mean = 2.0, std = 1.0}}
     return randn() * x.normal.std + x.normal.mean

@@ -24,7 +24,8 @@ function preprocess(x::@NamedTuple{center::SVector{N,Float64}, size::SVector{N,F
     s = SVector{N, Float64}(x.size)
     min = c - 0.5 .* s
     max = c + 0.5 .* s
-    return (center = c, size = s, min = min, max = max)
+    inv_size = 1 ./ s
+    return (center = c, size = s, min = min, max = max, inv_size = inv_size)
 end
 
 function recursive_namedtuple(d::Dict, preprocess = preprocess)

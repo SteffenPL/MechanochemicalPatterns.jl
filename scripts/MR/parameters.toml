@@ -1,0 +1,25 @@
+[sim]
+    t_end   = 150.0  # min
+    dt      = 0.005  # min
+    saveat  = 0.1   # min
+
+    [sim.collision_detection]
+        boxsize = 5.0  # μm
+        margin = 0.2  # 0-1
+[env]
+    damping = 1.0             # pg/min (makes mass non-dimensional)
+    periodic = true
+    domain = { center = [0.0, 0], size = [300.0, 300.0] }   # μm
+
+[cells]
+    n_bact = 1000
+
+    R_hard = 0.7         # μm
+    n_disks = 10
+
+    v_self_prop = 3.0      # μm/min (speed of cells in cluster)
+    center_attraction = 1.0
+    bending_stiffness = 8.0 # μm^2/min
+    flip_rate = 0.0       # 1/min
+
+    init_pos = {uniform = "domain"}

@@ -15,7 +15,7 @@ module MechanochemicalPatterns
     
     export load_parameters, eval_param, get_param
 
-    export dist, dist², random_direction
+    export dist, dist², random_direction, safe_normalize
 
     export laplace!
 end
