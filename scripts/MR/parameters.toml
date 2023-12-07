@@ -12,11 +12,11 @@
     domain = {center = [0.0, 0], size = [180.0, 180.0] }   # μm
 
 [cells]
-    n_bact = 500
+    n_bact = 1000
 
     R_hard = 0.7         # μm
     n_disks = 10
-    T_clock = {constant = 10.0}         # min
+    T_clock = {constant = 1.0}         # min
     v_self_prop = 3.0      # μm/min (speed of cells in cluster)
     center_attraction = 1.0
     bending_stiffness = 4.0 # μm^2/min
@@ -25,8 +25,9 @@
     init_pos = {uniform = "domain"}
 
     [cells.reversal_mechanism]
-        # none, random, clockbased, directional_density, frustration, local_density
-        directional_density = {threshold = -0.1, R = 1.0}   # polarity (nd), μm
+        # none, random, clock, directional_density, frustration, local_density
+        clock = {}
+        #directional_density = {threshold = -0.1, R = 1.0}   # polarity (nd), μm
 
 
 

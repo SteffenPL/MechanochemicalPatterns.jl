@@ -61,7 +61,7 @@ function flip_bacteria!(s, p, cache)
             end
         elseif hasproperty(rm, :clock)
             if s.tsr[k] > p.cells.T_clock.constant
-                cacheflipping[k] = true
+                cache.flipping[k] = true
                 s.tsr[k] = 0.0
             else 
                 s.tsr[k] += p.sim.dt
