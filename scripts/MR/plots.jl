@@ -1,4 +1,4 @@
-function init_plot(s, p)
+function init_plot(s, p; show_heads = true)
 
     fig = Figure(resolution = (1024, 768))
 
@@ -7,6 +7,8 @@ function init_plot(s, p)
     X_node = @lift $state_obs.X
     t_node = @lift @sprintf "Time = %.1fmin" $state_obs.t
     c_node = @lift [ atan(P[2] / P[1] ) for P in $state_obs.P ]
+    H_node = @lift [$state_obs.X[seg[1]] for seg in $state_obs.colony]
+    Hc_node = @lift [ atan($state_obs.P[seg[1]][2] / $state_obs.P[seg[1]][1] ) for seg in $state_obs.colony]
     
     # create plot
     ax = Axis(fig[1,1], title = t_node)
@@ -18,6 +20,20 @@ function init_plot(s, p)
     scatter!(X_node, 
                 markersize = 2 * p.cells.R_hard, markerspace = :data, 
                 color = c_node, marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
+
+    if show_heads 
+        scatter!(X_node, 
+            markersize = 2 * p.cells.R_hard, markerspace = :data, 
+            color = (:black, 0.3), marker = Makie.Circle)
+
+        scatter!(H_node, 
+            markersize = 2 * p.cells.reversal_mechanism.directional_density.R, markerspace = :data, 
+            color = (:white, 0.5), marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
+
+        scatter!(H_node, 
+            markersize = 2 * p.cells.R_hard, markerspace = :data, 
+            color = Hc_node, marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
+    end
 
     return fig, state_obs
 end

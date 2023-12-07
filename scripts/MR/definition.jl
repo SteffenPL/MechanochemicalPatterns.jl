@@ -9,7 +9,8 @@ const AdhesionGraph = BDMGraph{Int64}
 @proto mutable struct State
     const X::Vector{SVecD} = SVecD[]  # position 
     const P::Vector{SVecD} = SVecD[]  # polarity
-    const bonds::AdhesionGraph = BDMGraph(0, 2)  # adhesion bonds
+    const colony::Vector{Vector{Int}} = Vector{Int}[]  # segments
+    const tsr::Vector{Float64} = Float64[]  # time since reversal
     t::Float64 = 0.0
 end
 
@@ -17,7 +18,8 @@ function partialcopy(s, lazy = false)
     return State(; 
         X = copy(s.X), 
         P = copy(s.P), 
-        bonds = deepcopy(s.bonds), 
+        colony = deepcopy(s.colony), 
+        clock = deepcopy(s.clock),
         t = s.t
         )
 end
@@ -28,13 +30,18 @@ end
     outdated::Bool = true  # for internal use
 
     # parameters 
-    N::Int = 0
+    N::Int64 = 0
 
     # forces 
     const F::Vector{SVecD} = SVecD[]
+    const Heads::Vector{SVecD} = SVecD[]
+
+    # flipping 
+    const flipping::BitVector = BitVector([])
 
     # collision detection 
     const st::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
+    const st_heads::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
 end
 
 # for better printing
@@ -42,6 +49,9 @@ Base.show(io::IO, s::State) = @printf io "State(%d cells @ t = %.2fh)" length(s.
 Base.show(io::IO, c::Cache) = @printf io "Cache(%d cells)" c.N
 
 
+function segments(segments)
+    return ( (segments[i], segments[i+1]) for i in 1:length(segments)-1 )
+end
 
 function init_state(p)
     
@@ -52,96 +62,131 @@ function init_state(p)
 
     # initial cell positions
     X = [ rand(SVecD) .* p.env.domain.size .+ p.env.domain.min for i in 1:N]
-    P = [ random_direction() for i in 1:N]
+    P = [ random_direction(Dim) for i in 1:N]
     
-    # adhesive network 
-    bonds = BDMGraph(N, 2)
+    # segments 
+    colony = [collect(i:i+n_disks-1) for i in 1:n_disks:N]
 
     for i in 1:n_disks:N
         for j in i+1:i+n_disks-1
-            add_edge!(bonds, j, j-1)
             X[j] = X[j-1] - 0.1 * 2 * p.cells.R_hard * P[i]
             P[j] = P[i]
         end
     end
 
-    # initialize positions in a smart way 
-    st = BoundedHashTable(N, p.sim.collision_detection.boxsize, 
-                            p.env.domain.min, p.env.domain.max)
+    if hasproperty(p.cells.reversal_mechanism, :clock)
+        tsr = rand(n_bact) .* p.cells.T_clock.constant
+    else 
+        tsr = Float64[]
+    end
 
-    # n_steps = 10
-    # dx = 2 * p.cells.R_hard / n_steps
-
-    # for k_disks in 1:n_disks
-    #     N_k = p.cells.n_bact * k_disks      # current number of disks we consider 
-    #     X = X[1:k_disks, :]                 # consider only the first k_disks disks
-    #     F = zeros(SVecD, k_disks, n_bact)   # force on each disk
-    #     updatetable!(st, X)
-
-    #     tmp_state = State(; X, P, bonds)
-    #     tmp_cache = (;st, F)
-
-    #     for k_steps in 1:n_steps
-    #         # move leader forward 
-    #         for i in axes(X,2)
-    #             X[1, i] += dx * P[i]
-    #         end
-
-    #         # deal with contacts 
-    #     end
-
-    # end
-
-    return State(; X, P, bonds)
+    return State(; X, P, colony, tsr)
 end
 
-function segment(i)
-    n = p.cells.n_disks
-    i_head = div(i-1, n) * n + 1
-    return i_head:i_head + p.cells.n_disks - 1
-end
 
 function resize_cache!(s, p, cache)
     if cache.N != length(s.X)
         cache.N = length(s.X)
-        for prop_name in propertynames(cache) 
-            prob = getproperty(cache, prop_name)
-            if prob isa Vector 
-                resize!(prob, cache.N)
-            end 
-        end 
-
         resize!(cache.st, cache.N)
+        resize!(cache.F, cache.N)
+
+        cache.outdated = true
+    end
+
+    if length(cache.Heads) != length(s.colony)
+        resize!(cache.Heads, length(s.colony))
+        resize!(cache.st_heads, length(s.colony))
+        resize!(cache.flipping, length(s.colony))
+        
         cache.outdated = true
     end
 end
 
 function update_cache!(s, p, cache)
     if cache.outdated  
+        # after resize, one might need to update other data in the cache
         cache.outdated = false
     end
+
 end
 
 function init_cache(p, s)
     cd = p.sim.collision_detection
     margin = (0.5 + cd.margin)
     dom = p.env.domain
-    sht = BoundedHashTable(length(s.X), cd.boxsize, 
+    st = BoundedHashTable(length(s.X), cd.boxsize, 
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
 
+    st_heads = BoundedHashTable(length(s.colony), cd.boxsize, 
+                            dom.min - margin .* dom.size, 
+                            dom.max + margin .* dom.size)
 
-    c = Cache(; st = sht)
+    c = Cache(; st, st_heads)
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
     return c
 end
 
-@inline function neighbours_bc(p, cache, pos, r)
+
+
+function presimulate(p, substeps = 1, bending = p.cells.bending_stiffness)
+
+    p = @set p.cells.n_disks = 1
+    p = @set p.sim.dt = p.sim.dt / substeps 
+    p = @set p.cells.bending_stiffness = bending
+
+    s = init_state(p)
+    cache = init_cache(p, s)
+
+    for k in 1:10 
+        n_steps =  round(Int64, (2 * p.cells.R_hard) / (p.cells.v_self_prop * p.sim.dt))
+        for _ in 1:n_steps
+            # update cache (in case of cell division)
+            resize_cache!(s, p, cache)
+            update_cache!(s, p, cache)
+            updatetable!(cache.st, s.X)
+        
+            reset_forces!(s, p, cache)
+            pull_polarities!(s, p, cache)
+            compute_bending_forces!(s, p, cache)
+            add_self_prop!(s, p, cache)
+            
+            # add forces
+            for i in eachindex(s.X)
+                s.X[i] += cache.F[i] * p.sim.dt / p.env.damping
+            end
+        
+            project_non_overlap!(s, p, cache)
+            project_bonds!(s, p, cache)
+            project_onto_domain!(s, p, cache)
+        end
+
+        for (i, seg) in enumerate(s.colony)
+            head = seg[1]
+            tail = seg[end]
+            P = s.P[tail]
+            add_disk!(s, p, cache, i, s.X[tail] - 2*p.cells.R_hard*P, P)
+        end
+    end
+
+    return s, cache
+end
+
+
+
+
+
+
+
+
+
+# helper functions
+@inline function neighbours_bc(p, st, pos, r)
     if p.env.periodic
-        return periodic_neighbours(cache.st, pos, r)
+        return periodic_neighbours(st, pos, r)
     else
-        return ( (i, SVecD(0.0, 0.0)) for i in neighbours(cache.st, pos, r) )
+        return ( (i, zero(SVecD)) for i in neighbours(st, pos, r) )
     end
 end
 

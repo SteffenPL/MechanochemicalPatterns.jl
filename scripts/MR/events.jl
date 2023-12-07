@@ -1,62 +1,78 @@
-function cell_divisions!(s, p, cache)
-    s.cell_age .+= p.sim.dt
+function add_disk!(s, p, cache, i_bact, Xj, Pj)
+    # add disk to the end of the colony
+    push!(s.X, Xj)
+    push!(s.P, Pj)
 
-    for i in eachindex(s.X)
-        if s.cell_age[i] > p.cells.lifespan
-            if Dim == 2 
-                error("Cell division not implemented for 2D")
-            elseif Dim == 3 
-                X = s.X[i]
-                P = s.P[i]
+    # add bond to the end of the colony
+    push!(s.colony[i_bact], length(s.X))
 
-                rd = random_direction(Dim)
-                s.X[i] += rd * p.cells.R_hard / 2
-                s.P[i] = random_direction(Dim)
-                s.cell_age[i] = 0.0
+    cache.outdated = true
+end
 
-                # create new cell
-                ct = s.cell_type[i]
 
-                push!(s.X, X - rd * p.cells.R_hard / 2)
-                push!(s.P, random_direction(Dim))
-                push!(s.cell_type, ct)
-                push!(s.cell_age, 0.0)
 
-                add_vertex!(s.adh_bonds)
+switch(p, clock, age) = false
+switch(p, clock::@NamedTuple{constant::Float64}, age) = age > clock.constant
+switch(p, clock::@NamedTuple{random_rate::Float64}, age) = rand() < 1 - exp(-clock.random_rate*p.sim.dt)
 
-                cache.outdated = true
+function flip_bacteria!(s, p, cache, k)
+    s.colony[k] = reverse(s.colony[k])
+    for j in s.colony[k]
+        s.P[j] = -s.P[j]
+    end
+end 
+
+function compute_head_neighbours!(s, p, cache, k)
+    R = 2*p.cells.reversal_mechanism.directional_density.R
+    count = 0
+    polarity = 0.0
+    for (j, o) in neighbours_bc(p, cache.st_heads, cache.Heads[k], R)
+        djk² = dist²(p, cache.Heads[j], cache.Heads[k])
+        if djk² < R^2
+
+            Pj = s.P[s.colony[j][1]]
+            Pk = s.P[s.colony[k][1]]
+
+            count += 1
+            polarity += dot(Pk, Pj) / (norm(Pj)*norm(Pk))
+
+        end
+    end
+    polarity = count > 0 ? polarity / count : 1.0
+    return polarity 
+end
+
+function flip_bacteria!(s, p, cache)
+
+    updatetable!(cache.st_heads, cache.Heads)
+    for (i, seg) in enumerate(s.colony)
+        cache.Heads[i] = s.X[seg[1]]
+    end
+
+    cache.flipping .= false
+
+    rm = p.cells.reversal_mechanism
+    for k in eachindex(s.colony)
+        if hasproperty(rm, :directional_density)
+            dd = rm.directional_density
+            polarity = compute_head_neighbours!(s, p, cache, k)
+            
+            if polarity < dd.threshold
+                cache.flipping[k] = true
+            end
+        elseif hasproperty(rm, :clock)
+            if s.tsr[k] > p.cells.T_clock.constant
+                cacheflipping[k] = true
+                s.tsr[k] = 0.0
+            else 
+                s.tsr[k] += p.sim.dt
             end
         end
     end
 
-    if cache.outdated
-
-        resize_cache!(s, p, cache)
-    end
-end
-
-function flip_bacteria!(s, p, cache)
-    n_disks = p.cells.n_disks
-    for i in 1:n_disks:length(s.X)
-        if rand() < 1 - exp(-p.cells.flip_rate * p.sim.dt)
-            # detect direction 
-            if indegree(s.bonds, i) == 1 
-                # i is the head 
-                for j in i+1:i+n_disks-1
-                    rem_edge!(s.bonds, j, j-1)
-                    add_edge!(s.bonds, j-1, j)
-                end
-            else
-                # i is the tail, i + n_disks - 1 is the head
-                for j in i+1:i+n_disks-1
-                    rem_edge!(s.bonds, j-1, j)
-                    add_edge!(s.bonds, j, j-1)
-                end
-            end
-
-            for j in i:i+n_disks-1
-                s.P[j] = -s.P[j]
-            end
+    for (k, flip) in enumerate(cache.flipping)
+        if flip
+            flip_bacteria!(s, p, cache, k)
         end
     end
 end

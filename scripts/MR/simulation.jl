@@ -2,7 +2,9 @@
 function time_step!(s, p, cache) 
 
     # update cache (in case of cell division)
+    resize_cache!(s, p, cache)
     update_cache!(s, p, cache)
+
     updatetable!(cache.st, s.X)
 
 
@@ -32,6 +34,8 @@ function time_step!(s, p, cache)
     project_non_overlap!(s, p, cache)
     project_bonds!(s, p, cache)
     project_onto_domain!(s, p, cache)
+
+    cache.outdated = true
 end
 
 function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
@@ -40,6 +44,7 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
 
     s = deepcopy(s)
 
+    cache.outdated = true
     resize_cache!(s, p, cache)
     update_cache!(s, p, cache)
     project_onto_domain!(s, p, cache)
