@@ -51,9 +51,8 @@ function init_state(p)
     N = n_bact * n_disks
 
     # initial cell positions
-    pconst = random_direction(Dim)
     X = [ rand(SVecD) .* p.env.domain.size .+ p.env.domain.min for i in 1:N]
-    P = [ p for i in 1:N]
+    P = [ random_direction() for i in 1:N]
     
     # adhesive network 
     bonds = BDMGraph(N, 2)
@@ -66,9 +65,9 @@ function init_state(p)
         end
     end
 
-    # # initialize positions in a smart way 
-    # st = BoundedHashTable(N, p.sim.collision_detection.boxsize, 
-    #                         p.env.domain.min, p.env.domain.max)
+    # initialize positions in a smart way 
+    st = BoundedHashTable(N, p.sim.collision_detection.boxsize, 
+                            p.env.domain.min, p.env.domain.max)
 
     # n_steps = 10
     # dx = 2 * p.cells.R_hard / n_steps
