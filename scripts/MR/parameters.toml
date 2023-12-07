@@ -12,7 +12,7 @@
     domain = {center = [0.0, 0], size = [180.0, 180.0] }   # μm
 
 [cells]
-    n_bact = 1000
+    n_bact = 500
 
     R_hard = 0.7         # μm
     n_disks = 10

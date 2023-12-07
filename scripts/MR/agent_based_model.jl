@@ -18,9 +18,6 @@ end
 #play_animation!(fig, s_obs, states, 10)
 
 
-compute_head_neighbours!(s, p, cache, 1)
-
-
 fig, s_obs = init_plot(s, p)
 display(fig)
 
