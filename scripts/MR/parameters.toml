@@ -26,7 +26,8 @@
 
     [cells.reversal_mechanism]
         # none, random, clock, directional_density, frustration, local_density
-        clock = {}
+        #clock = {} 
+        random = {random_rate = 0.5}
         #directional_density = {threshold = -0.1, R = 1.0}   # polarity (nd), μm
 
 

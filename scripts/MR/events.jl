@@ -66,6 +66,11 @@ function flip_bacteria!(s, p, cache)
             else 
                 s.tsr[k] += p.sim.dt
             end
+        elseif hasproperty(rm, :random)
+            dd=rm.random
+            if rand() < 1 - exp(-dd.random_rate*p.sim.dt)
+                cache.flipping[k] = true
+            end
         end
     end
 
