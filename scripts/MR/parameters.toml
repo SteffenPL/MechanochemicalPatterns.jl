@@ -16,7 +16,6 @@
 
     R_hard = 0.7         # μm
     n_disks = 10
-    T_clock = {constant = 1.0}         # min
     v_self_prop = 3.0      # μm/min (speed of cells in cluster)
     center_attraction = 1.0
     bending_stiffness = 4.0 # μm^2/min
@@ -26,9 +25,10 @@
 
     [cells.reversal_mechanism]
         # none, random, clock, directional_density, frustration, local_density
-        #clock = {} 
+        clock = {period = 1.0}  # min
         random = {random_rate = 0.5}
-        #directional_density = {threshold = -0.1, R = 1.0}   # polarity (nd), μm
+        directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
+        local_density = {threshold = 3} #number of neighbors
 
 
 

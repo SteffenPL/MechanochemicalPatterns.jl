@@ -1,5 +1,8 @@
 include("base.jl")
 
+#to set automatically the reversalmechanism before the simulation
+#revm = p.cells.reversal_mechanism 
+#p = @set p.cells.reversal_mechanism  = (; random = revm.random)
 
 
 Random.seed!(4)

@@ -75,7 +75,7 @@ function init_state(p)
     end
 
     if hasproperty(p.cells.reversal_mechanism, :clock)
-        tsr = rand(n_bact) .* p.cells.T_clock.constant
+        tsr = rand(n_bact) .* p.cells.reversal_mechanism.clock.period
     else 
         tsr = Float64[]
     end
