@@ -42,6 +42,21 @@ function compute_head_neighbours!(s, p, cache, k)
     return polarity 
 end
 
+function compute_head_neighbours_localdensity!(s, p, cache, k)
+    R = 2*p.cells.reversal_mechanism.local_density.R
+    number_neighbors = 0.0
+    for (j, o) in neighbours_bc(p, cache.st_heads, cache.Heads[k], R)
+        djk² = dist²(p, cache.Heads[j], cache.Heads[k])
+        if 0 < djk² < R^2
+
+            number_neighbors  += 1
+           
+        end
+    end
+    return number_neighbors 
+end
+
+
 function flip_bacteria!(s, p, cache)
     for (i, seg) in enumerate(s.colony)
         cache.Heads[i] = s.X[seg[1]]
@@ -69,6 +84,12 @@ function flip_bacteria!(s, p, cache)
         elseif hasproperty(rm, :random)
             dd=rm.random
             if rand() < 1 - exp(-dd.random_rate*p.sim.dt)
+                cache.flipping[k] = true
+            end
+        elseif hasproperty(rm, :local_density)
+            dd = rm.local_density
+            number_neighbors = compute_head_neighbours_localdensity!(s, p, cache, k)
+            if number_neighbors > dd.threshold
                 cache.flipping[k] = true
             end
         end

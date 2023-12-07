@@ -25,10 +25,10 @@
 
     [cells.reversal_mechanism]
         # none, random, clock, directional_density, frustration, local_density
-        clock = {period = 1.0}  # min
-        random = {random_rate = 0.5}
-        directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
-        local_density = {threshold = 3} #number of neighbors
+        #clock = {period = 1.0}  # min
+        #random = {random_rate = 0.5}
+        #directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
+        local_density = {threshold = 3, R = 1.0} #number of neighbors
 
 
 
