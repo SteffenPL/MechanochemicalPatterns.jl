@@ -12,7 +12,6 @@ begin
     display(fig)
 
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
-
     add_slider!(fig, s_obs, states, p)
 end
 #play_animation!(fig, s_obs, states, 10)

@@ -26,8 +26,11 @@ function init_plot(s, p; show_heads = true)
             markersize = 2 * p.cells.R_hard, markerspace = :data, 
             color = (:black, 0.3), marker = Makie.Circle)
 
+        rm = p.cells.reversal_mechanism
+        R = hasproperty(rm, :directional_density) ? rm.directional_density.R : p.cells.R_hard
+
         scatter!(H_node, 
-            markersize = 2 * p.cells.reversal_mechanism.directional_density.R, markerspace = :data, 
+            markersize = 2 * R, markerspace = :data, 
             color = (:white, 0.5), marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
 
         scatter!(H_node, 

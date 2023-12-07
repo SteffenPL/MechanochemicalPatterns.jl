@@ -43,7 +43,6 @@ function compute_head_neighbours!(s, p, cache, k)
 end
 
 function flip_bacteria!(s, p, cache)
-
     updatetable!(cache.st_heads, cache.Heads)
     for (i, seg) in enumerate(s.colony)
         cache.Heads[i] = s.X[seg[1]]
