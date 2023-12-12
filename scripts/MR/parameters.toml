@@ -28,7 +28,8 @@
         #clock = {period = 1.0}  # min
         #random = {random_rate = 0.5}
         #directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
-        local_density = {threshold = 3, R = 1.0} #number of neighbors
+        #local_density = {threshold = 3, R = 1.0} #number of neighbors
+        frustration = {threshold = 4, memory = 0.33, forget = -0.90} #frustration threshold, seconds (20 s), forgetting rate for when we put the exponential in the sum of frustrations
 
 
 

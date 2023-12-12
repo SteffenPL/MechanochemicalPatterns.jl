@@ -11,7 +11,7 @@ begin
     s, cache = presimulate(p, 1, 1.0)
 
     states = [deepcopy(s)]
-    fig, s_obs = init_plot(s, p)
+    fig, s_obs = init_plot(s, p, show_frustration = true)
     display(fig)
 
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)

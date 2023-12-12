@@ -1,4 +1,4 @@
-function init_plot(s, p; show_heads = true)
+function init_plot(s, p; show_frustration = false, show_heads = !show_frustration)
 
     fig = Figure(resolution = (1024, 768))
 
@@ -9,7 +9,20 @@ function init_plot(s, p; show_heads = true)
     c_node = @lift [ atan(P[2] / P[1] ) for P in $state_obs.P ]
     H_node = @lift [$state_obs.X[seg[1]] for seg in $state_obs.colony]
     Hc_node = @lift [ atan($state_obs.P[seg[1]][2] / $state_obs.P[seg[1]][1] ) for seg in $state_obs.colony]
+    frust_node = lift(state_obs) do s_
+        F = zeros(length(s_.X))
+        for (k, seg) in enumerate(s_.colony)
+            for i in seg
+                F[i] = s_.frustration[k]
+            end
+        end
+        return F
+    end 
     
+
+    rm = p.cells.reversal_mechanism
+    R = hasproperty(rm, :directional_density) ? rm.directional_density.R : p.cells.R_hard
+
     # create plot
     ax = Axis(fig[1,1], title = t_node)
     ax.aspect = DataAspect()
@@ -17,17 +30,17 @@ function init_plot(s, p; show_heads = true)
     xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
     ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
 
-    scatter!(X_node, 
-                markersize = 2 * p.cells.R_hard, markerspace = :data, 
-                color = c_node, marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
 
     if show_heads 
         scatter!(X_node, 
             markersize = 2 * p.cells.R_hard, markerspace = :data, 
+            color = c_node, marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
+
+            
+        scatter!(X_node, 
+            markersize = 2 * p.cells.R_hard, markerspace = :data, 
             color = (:black, 0.3), marker = Makie.Circle)
 
-        rm = p.cells.reversal_mechanism
-        R = hasproperty(rm, :directional_density) ? rm.directional_density.R : p.cells.R_hard
 
         scatter!(H_node, 
             markersize = 2 * R, markerspace = :data, 
@@ -36,6 +49,21 @@ function init_plot(s, p; show_heads = true)
         scatter!(H_node, 
             markersize = 2 * p.cells.R_hard, markerspace = :data, 
             color = Hc_node, marker = Makie.Circle, colormap = :cyclic_mygbm_30_95_c78_n256)
+    elseif show_frustration
+        scatter!(H_node, 
+            markersize = 2 * R, markerspace = :data, 
+            color = (:white, 0.5), marker = Makie.Circle)
+
+        sc = scatter!(X_node, 
+            markersize = 2 * p.cells.R_hard, markerspace = :data, 
+            color = frust_node, marker = Makie.Circle)
+
+        Colorbar(fig[1,2], sc)
+    else 
+        scatter!(X_node, 
+            markersize = 2 * p.cells.R_hard, markerspace = :data, 
+            color = c_node, marker = Makie.Circle, colormap = :buda)
+
     end
 
     return fig, state_obs

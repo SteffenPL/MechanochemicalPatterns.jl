@@ -48,12 +48,31 @@ function compute_head_neighbours_localdensity!(s, p, cache, k)
     for (j, o) in neighbours_bc(p, cache.st_heads, cache.Heads[k], R)
         djk² = dist²(p, cache.Heads[j], cache.Heads[k])
         if 0 < djk² < R^2
-
             number_neighbors  += 1
-           
         end
     end
     return number_neighbors 
+end
+
+function remember_heads!(s, p, cache)
+    for k in eachindex(cache.Heads)
+        cache.prevHeads[k] = cache.Heads[k]
+    end  
+end
+
+function head_velocity_apriori!(s, p, cache, k) 
+    return s.P[s.colony[k][1]] * p.cells.v_self_prop
+end
+
+
+function compute_frustration!(s, p, cache, k)
+    lambda = p.cells.reversal_mechanism.frustration.forget 
+    d = p.cells.reversal_mechanism.frustration.memory
+    Ppt = (cache.prevHeads[k] - cache.Heads[k]) ./ p.sim.dt
+    Pt = head_velocity_apriori!(s, p, cache,k)
+    f = 1 - dot(Pt, Ppt) / max(norm(Pt)^2, norm(Ppt)^2)
+
+    s.frustration[k] = s.frustration[k] * exp(-(lambda * p.sim.dt)/ d) + f * p.sim.dt
 end
 
 
@@ -91,6 +110,14 @@ function flip_bacteria!(s, p, cache)
             number_neighbors = compute_head_neighbours_localdensity!(s, p, cache, k)
             if number_neighbors > dd.threshold
                 cache.flipping[k] = true
+            end
+        elseif hasproperty(rm, :frustration)
+            dd=rm.frustration
+            compute_frustration!(s, p, cache, k)
+            if s.frustration[k] > dd.threshold
+                cache.flipping[k] = true
+                s.frustration[k] = 0
+                display("flip")
             end
         end
     end

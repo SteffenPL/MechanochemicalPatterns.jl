@@ -11,6 +11,7 @@ const AdhesionGraph = BDMGraph{Int64}
     const P::Vector{SVecD} = SVecD[]  # polarity
     const colony::Vector{Vector{Int}} = Vector{Int}[]  # segments
     const tsr::Vector{Float64} = Float64[]  # time since reversal
+    const frustration::Vector{Float64} = Float64[]
     t::Float64 = 0.0
 end
 
@@ -20,6 +21,7 @@ function partialcopy(s, lazy = false)
         P = copy(s.P), 
         colony = deepcopy(s.colony), 
         clock = deepcopy(s.clock),
+        frustration = deepcopy(s.frustration),
         t = s.t
         )
 end
@@ -35,6 +37,7 @@ end
     # forces 
     const F::Vector{SVecD} = SVecD[]
     const Heads::Vector{SVecD} = SVecD[]
+    const prevHeads::Vector{SVecD} = SVecD[]
 
     # flipping 
     const flipping::BitVector = BitVector([])
@@ -80,7 +83,9 @@ function init_state(p)
         tsr = Float64[]
     end
 
-    return State(; X, P, colony, tsr)
+    frustration = zeros(n_bact)
+
+    return State(; X, P, colony, tsr, frustration)
 end
 
 
@@ -95,6 +100,7 @@ function resize_cache!(s, p, cache)
 
     if length(cache.Heads) != length(s.colony)
         resize!(cache.Heads, length(s.colony))
+        resize!(cache.prevHeads, length(s.colony))
         resize!(cache.st_heads, length(s.colony))
         resize!(cache.flipping, length(s.colony))
         
@@ -172,7 +178,6 @@ function presimulate(p, substeps = 1, bending = p.cells.bending_stiffness)
 
     return s, cache
 end
-
 
 
 

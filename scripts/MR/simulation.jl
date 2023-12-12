@@ -35,6 +35,8 @@ function time_step!(s, p, cache)
     project_bonds!(s, p, cache)
     project_onto_domain!(s, p, cache)
 
+    remember_heads!(s, p, cache)
+
     cache.outdated = true
 end
 
@@ -48,6 +50,7 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
     resize_cache!(s, p, cache)
     update_cache!(s, p, cache)
     project_onto_domain!(s, p, cache)
+    remember_heads!(s, p, cache)
 
     t_unsaved = 0.0
     t_lazy = 0.0
