@@ -6,9 +6,9 @@ const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
 
 # The state contains all data which is needed to produce the next 
 # time step (provided the parameters are known).
-@proto mutable struct State
-    const X::Vector{SVecD} = SVecD[]  # position 
-    const P::Vector{SVecD} = SVecD[]  # polarity
+@proto mutable struct State{Dim}
+    const X::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # position 
+    const P::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # polarity
     const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
     const cell_age::Vector{Float64} = Float64[]
@@ -31,7 +31,7 @@ end
 
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
-@proto mutable struct Cache{ODEP, ODEI}
+@proto mutable struct Cache{Dim, ODEP, ODEI}
     outdated::Bool = true  # for internal use
 
     # parameters 
@@ -49,7 +49,7 @@ end
     const run_time::Vector{Float64} = Float64[]
 
     # neighbour avg directions 
-    const neighbour_avg::Vector{SVecD} = SVecD[]
+    const neighbour_avg::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
     const neighbour_count::Vector{Int} = Int[]
 
     # ODE problem for the signals
@@ -57,7 +57,7 @@ end
     const ode_integrator::ODEI = nothing
 
     # forces 
-    const F::Vector{SVecD} = SVecD[]
+    const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
 
     # collision detection 
     const st::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
@@ -75,8 +75,8 @@ function init_state(p)
     shuffle!(cell_type)
 
     # initial cell positions
-    X = [ SVecD(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
-    P = [ random_direction(Dim) for i in 1:N]
+    X = [ svec(p)(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+    P = [ random_direction(dim(p)) for i in 1:N]
 
     # initial age 
     cell_age = [ p.cells.lifespan * rand() for i in 1:N ]

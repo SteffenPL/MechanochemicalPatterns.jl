@@ -10,9 +10,12 @@ config = load_config()
 init_makie(config)
 set_theme!(theme_black())
 
-const Dim = 3
-const SVecD = SVector{Dim, Float64}
-const R_max = 20.0
+
+dim(x::Val{n}) where n = n
+dim(p) = dim(p.env.dim)
+
+svec(p) = SVector{dim(p), Float64}
+
 
 include("definition.jl")
 include("forces.jl")
@@ -23,7 +26,7 @@ include("plots.jl")
 
 Random.seed!(4)
 begin 
-    p = load_parameters()
+    p = load_parameters("scripts/current/parameters_2D.toml")
     s = init_state(p)
     cache = init_cache(p, s)
 

@@ -30,7 +30,7 @@ function eval_param(p, x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) w
     return r
 end
 X = 10
-function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2, T3 <: Function} 
+function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}, init_vector = MVector{Dim,Float64}(zeros(Dim))) where {T1 <: Function, T2, T3 <: Function, Dim} 
     dom = nt.custom_distr.domain_bounds
 
     # generate random points inside the bounds and with fnc(x,y,z) > 0 

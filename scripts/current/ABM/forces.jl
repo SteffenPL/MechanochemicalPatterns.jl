@@ -9,21 +9,21 @@ end
 
 function reset_forces!(s, p, cache)
     for i in eachindex(cache.F)
-        cache.F[i] = zero(SVecD)
+        cache.F[i] = zero(svec(p))
     end
 end
 
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
     for i in eachindex(s.X)
-        cache.F[i] += randn(SVecD) * p.cells.sigma * inv_sqrt_dt
+        cache.F[i] += randn(svec(p)) * p.cells.sigma * inv_sqrt_dt
     end
 end
 
 # polarity dynamics 
 function update_polarity!(s, p, cache)
     for i in eachindex(s.X)
-        s.P[i] += randn(SVecD) * p.cells.sigma_p * sqrt(p.sim.dt)
+        s.P[i] += randn(svec(p)) * p.cells.sigma_p * sqrt(p.sim.dt)
         s.P[i] /= norm(s.P[i])
 
         if cache.neighbour_count[i] > 6
@@ -151,7 +151,7 @@ function compute_neighbourhood!(s, p, cache)
     cache.neighbour_count .= 0
 
     for i in eachindex(cache.neighbour_avg)
-        cache.neighbour_avg[i] = zero(SVecD)
+        cache.neighbour_avg[i] = zero(svec(p))
     end
 
     for i in eachindex(s.X)

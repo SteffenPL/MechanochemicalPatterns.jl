@@ -17,6 +17,8 @@ function init_plot(s, p;
 
     state_obs = Observable(s)
 
+    SVecD = svec(p)
+
     X_node = @lift $state_obs.X
     ct = @lift $state_obs.cell_type
     E_node = @lift Tuple{SVecD,SVecD}[($state_obs.X[src(e)], $state_obs.X[dst(e)]) for e in edges($state_obs.adh_bonds) ]
