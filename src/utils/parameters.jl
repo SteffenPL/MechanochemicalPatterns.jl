@@ -4,7 +4,6 @@ function load_parameters(fn = "scripts/current/parameters.toml")
     return recursive_namedtuple(p_dict)
 end
 
-
 """
     get_param(p, cell_type, sym, default = 0.0)
 
@@ -53,14 +52,14 @@ function eval_param(p, x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) w
     return r
 end
 X = 10
-function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2, T3 <: Function} 
+function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}) where {T1 <: Function, T2, T3 <: Function} 
     dom = nt.custom_distr.domain_bounds
 
     # generate random points inside the bounds and with fnc(x,y,z) > 0 
-    x = init_vector
+    x = 0.5 * dom.min + 0.5 * dom.max
     for i in 1:1000  # to avoid infinite loops
         # new random point
-        nt.custom_distr.distr(x, p)
+        x = nt.custom_distr.distr(x, p)
 
         # indomain 
         if nt.custom_distr.domain_fnc(x, p) > 0
@@ -75,15 +74,14 @@ function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1,
 end
 
 
-function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2}}, init_vector = MVector{3,Float64}(zeros(3))) where {T1 <: Function, T2} 
+function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2}}) where {T1 <: Function, T2} 
 
     distr = function (x, p)
         dom = p.env.domain
-        rand!(x)
-        @. x = x * dom.size + dom.center - 0.5 * dom.size
+        return @. rand(typeof(x)) * dom.size + dom.center - 0.5 * dom.size
     end
 
-    return eval_param(p, (;custom_distr = (nt.custom_distr..., distr = distr)), init_vector)
+    return eval_param(p, (;custom_distr = (nt.custom_distr..., distr = distr)))
 end
 
 

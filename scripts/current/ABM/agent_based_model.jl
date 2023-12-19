@@ -13,7 +13,6 @@ set_theme!(theme_black())
 
 dim(x::Val{n}) where n = n
 dim(p) = dim(p.env.dim)
-
 svec(p) = SVector{dim(p), Float64}
 
 

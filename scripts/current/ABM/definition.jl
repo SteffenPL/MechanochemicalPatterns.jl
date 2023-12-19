@@ -32,7 +32,11 @@ end
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
 @proto mutable struct Cache{Dim, ODEP, ODEI}
+
     outdated::Bool = true  # for internal use
+
+    # forces 
+    const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
 
     # parameters 
     N::Int = 0
@@ -56,8 +60,6 @@ end
     const ode_prob::ODEP = nothing
     const ode_integrator::ODEI = nothing
 
-    # forces 
-    const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
 
     # collision detection 
     const st::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
@@ -85,11 +87,14 @@ function init_state(p)
     adh_bonds = BDMGraph(N, 10)
 
     # signals 
-    xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+    #xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
-    u = [p.signals.types.u.init((x,y,z), p) for x in xs, y in ys, z in zs]
+    #u = [p.signals.types.u.init((x,y,z), p) for x in xs, y in ys, z in zs]
+    #v = similar(u)
+    #v .= 0.0
+
+    u = zeros(0,0)
     v = similar(u)
-    v .= 0.0
 
     return State(; X, P, cell_type, cell_age, adh_bonds, u, v)
 end
@@ -145,13 +150,18 @@ function init_cache(p, s)
         @. dz -= p.decay * z
     end
 
-    xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-    p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+    if dim(p) == 3
+        xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+        p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+    elseif dim(p) == 2
+        xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+        p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1]))
+    end
 
     ode_prob = ODEProblem(rhs!, s.u, (0.0, p.sim.t_end), p_ode)
     ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)
 
-    c = Cache(; st = sht, ode_prob, ode_integrator)
+    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], neighbour_avg = svec(p)[])
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
 

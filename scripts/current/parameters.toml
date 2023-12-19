@@ -93,13 +93,13 @@
                     function (x, p)
                         dom = p.env.domain
                         if rand() < 0.5
-                            rand!(x)
-                            @. x = dom.center + (0.5 - x) .* dom.size
+                            x = rand(typeof(x))
+                            return dom.center + (0.5 - x) .* dom.size
                         else
                             sigma = 50
                             center = (0, -100, 150)
-                            randn!(x)
-                            @. x = x * sigma + center
+                            x = randn(typeof(x))
+                            return x * sigma + center
                         end
                     end
                     """

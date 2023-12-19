@@ -27,11 +27,15 @@ function init_plot(s, p;
     R_node = @lift cache.R_hard[1:length($state_obs.X)]
 
     # create plot
-    ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
+    if dim(p) == 3
+        ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
+    elseif dim(p) == 2 
+        ax = Axis(fig[1,1], title = t_node) # LScene(fig[1, 1])
+    end
 
     xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
     ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
-    zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
+    dim(p) == 3 && zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
 
     meshscatter!(X_node, 
                 markersize = R_node, space = :data, 
@@ -55,7 +59,7 @@ function init_plot(s, p;
         linesegments!(P_n, color = :black; transparency)
     end
 
-    if bottom_plots 
+    if bottom_plots && dim(p) == 3
         dm = (p.env.domain.max[1], p.env.domain.max[2], p.env.domain.min[3])
         X_xy_node = @lift [ Point3f(x[1], x[2],dm[3]) for x in $state_obs.X]
         X_xz_node = @lift [ Point3f(x[1], dm[2],x[3]) for x in $state_obs.X]
@@ -67,7 +71,7 @@ function init_plot(s, p;
     end
 
     # create signal plot
-    if show_concentration
+    if show_concentration && dim(p) == 3
         ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
         volume!(u_node, colorrange = (0,1.5))
     end
