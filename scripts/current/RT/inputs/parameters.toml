@@ -1,0 +1,116 @@
+[env]
+    damping = 1.0             # pg/hr (makes mass non-dimensional)
+    domain = { center = [0.0, 0, 150], size = [500.0, 500, 300] }   # μm
+    gravity = [0.0,0.0,0.0]  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
+    dim = 3
+
+[sim]
+    t_end   = "julia: 3*24.0"  # hr
+    dt      = 0.002  # hr
+    saveat  = 0.1   # hr
+
+    [sim.collision_detection]
+        boxsize = 24.0  # μm
+        margin = 0.1  # 0-1
+
+[signals]
+    dx = 1.0   # μm
+    grid = [50, 50, 15]
+    dt = 0.001  # hr
+    saveat = 0.1 # hr
+
+    [signals.types.u]
+        D = 0.12   # μm²/hr
+        decay = 0.0001
+        init = """julia: 
+                        function (x, p)
+                            std = 25.0
+                            return 0 * exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
+                        end
+                        """
+
+[cells]
+    R_soft = 10.0        # μm
+    R_hard = 4.0         # μm 
+    R_adh = 11.0         # μm
+    R_attract = 11.0     # μm
+    R_interact = 11.0    # μm (maximal interaction range)
+    lifespan = "julia: NaN64" # hr
+    repulsion_stiffness = 20.0
+    sigma = 0.0         # μm / √hr (for additive white noise)
+    sigma_p = 0.1       # μm / √hr (for active brownian particles, acts on polarity)
+    plithotaxis = 100.0
+    v_self_prop = 12.0      # μm/hr (speed of cells in cluster)
+    
+    medium_repulsion = 0.0 # μm/hr
+    medium_alpha = 1.0      # n.d.
+    medium_slowdown = 0.2   # n.d.
+
+    init = {R = 120.0}
+
+    [cells.init_pos.custom_distr]
+        domain_fnc = """julia: 
+            function (x, p)
+                R = p.cells.init.R
+                c = (0, 0, 150)
+                return R^2 - ((x[1]-c[1])^2 + (x[2]-c[2])^2 + (x[3]-c[3])^2)
+            end"""
+        domain_bounds = { center = [0.0, 0.0, 150.0], size = [500.0, 500.0, 300.0] }
+
+    [cells.interaction]
+        attraction_stiffness = 0.0 #1
+        adhesion_stiffness = 0.3
+        new_adh_rate = 1.0  # 1/hr
+        break_adh_rate = 2.0  # hr
+
+    [cells.types.proximal]
+        ID = 1
+        N = 2000
+        attraction_stiffness = 0.0 #3
+        adhesion_stiffness = 0.8
+        new_adh_rate = 2.5  # 1/hr
+        break_adh_rate = 2.0  # 1/hr
+        R_hard = 6.0
+        R_soft = 10.0
+        R_adh = 12.0         # μm
+        R_attract = 20.0     # μm
+
+
+    [cells.types.distal]
+        ID = 2
+        N = 2000
+        attraction_stiffness = 0.0 #4
+        adhesion_stiffness = 0.8
+        new_adh_rate = 3.0  # 1/hr
+        break_adh_rate = 2.0  # 1/hr
+        R_hard = 5.0
+        R_soft = 8.0
+        R_adh = 10.0
+        R_attract = 18.0     # μm
+
+        [cells.types.distal.init_pos.custom_distr]
+                distr = """julia: 
+                    function (x, p)
+                        dom = p.env.domain
+                        if rand() < 0.5
+                            x = rand(typeof(x))
+                            return dom.center + (0.5 - x) .* dom.size
+                        else
+                            sigma = 50
+                            center = (0, -100, 150)
+                            x = randn(typeof(x))
+                            return x * sigma + center
+                        end
+                    end
+                    """
+                domain_fnc = """julia: 
+                    function (x, p)
+                        R = p.cells.init.R
+                        c = (0, 0, 150)
+                        return R^2 - ((x[1]-c[1])^2 + (x[2]-c[2])^2 + (x[3]-c[3])^2)
+                    end"""
+                domain_bounds = { center = [0.0, 0.0, 150.0], size = [500.0, 500.0, 300.0] }
+
+
+        # init_pos = {normal = {mean = [0.0,50,75], std = [30,30,15]}}
+

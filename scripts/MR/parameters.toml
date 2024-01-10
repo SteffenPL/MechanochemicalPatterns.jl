@@ -9,10 +9,10 @@
 [env]
     damping = 1.0             # pg/min (makes mass non-dimensional)
     periodic = true
-    domain = {center = [0.0, 0], size = [180.0, 180.0] }   # μm
+    domain = {center = [0.0, 0], size = [130.0, 130.0] }   # μm
 
 [cells]
-    n_bact = 1000
+    n_bact = 300
 
     R_hard = 0.7         # μm
     n_disks = 10
@@ -26,10 +26,10 @@
     [cells.reversal_mechanism]
         # none, random, clock, directional_density, frustration, local_density
         #clock = {period = 1.0}  # min
-        #random = {random_rate = 0.5}
-        #directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
+        # random = {random_rate = 0.5}
+        directional_density = {threshold = -0.1, R = 1.0}   # polarity threshold (nd), μm
         #local_density = {threshold = 3, R = 1.0} #number of neighbors
-        frustration = {threshold = 4, memory = 0.33, forget = -0.90} #frustration threshold, seconds (20 s), forgetting rate for when we put the exponential in the sum of frustrations
+        # frustration = {threshold = 4, memory = 0.33, forget = -0.90} #frustration threshold, seconds (20 s), forgetting rate for when we put the exponential in the sum of frustrations
 
 
 
