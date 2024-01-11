@@ -40,6 +40,16 @@ function eval_param(p, x::@NamedTuple{uniform::Vector})
     return x.uniform[1] + rand() * (x.uniform[2] - x.uniform[1])
 end
 
+
+function eval_param(p, x::@NamedTuple{uniform::String}) 
+    # Example: {uniform = "domain"}
+    if x.uniform == "domain"
+        return p.env.domain.min + rand(typeof(p.env.domain.max)) .* (p.env.domain.max - p.env.domain.min)
+    else
+        @error "Unknown uniform distribution: $(x.uniform)"
+    end
+end
+
 function eval_param(p, x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) where {T1 <: Number, T2} 
     # Example: {normal = {mean = 2.0, std = 1.0}}
     return randn() * x.normal.std + x.normal.mean
@@ -51,7 +61,7 @@ function eval_param(p, x::@NamedTuple{normal::@NamedTuple{mean::T1, std::T2}}) w
     @. r = r * x.normal.std + x.normal.mean
     return r
 end
-X = 10
+
 function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1, domain_bounds::T2, distr::T3}}) where {T1 <: Function, T2, T3 <: Function} 
     dom = nt.custom_distr.domain_bounds
 
@@ -59,10 +69,10 @@ function eval_param(p, nt::@NamedTuple{custom_distr::@NamedTuple{domain_fnc::T1,
     x = 0.5 * dom.min + 0.5 * dom.max
     for i in 1:1000  # to avoid infinite loops
         # new random point
-        x = nt.custom_distr.distr(x, p)
+        x = Base.invokelatest(nt.custom_distr.distr, x, p)
 
         # indomain 
-        if nt.custom_distr.domain_fnc(x, p) > 0
+        if Base.invokelatest(nt.custom_distr.domain_fnc, x, p) > 0
             if all(2 * abs.(x - dom.center) .< dom.size)  
                 return x
             end

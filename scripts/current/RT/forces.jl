@@ -26,7 +26,7 @@ function update_polarity!(s, p, cache)
         s.P[i] += randn(svec(p)) * p.cells.sigma_p * sqrt(p.sim.dt)
         s.P[i] /= norm(s.P[i])
 
-        if cache.neighbour_count[i] > 6
+        if p.cells.medium_active && cache.neighbour_count[i] > 6 
             nf = sqrt(sum(z -> z^2, cache.F[i]))
             fp = @. cache.F[i]/nf - s.P[i]
             align = dot(s.P[i], cache.F[i]) / nf
@@ -42,7 +42,7 @@ end
 function add_self_prop!(s, p, cache)
     dt_factor = p.cells.v_self_prop * p.env.damping
     for i in eachindex(s.X)
-        if cache.neighbour_count[i] > 6
+        if !p.cells.medium_active || cache.neighbour_count[i] > 6
             cache.F[i] += s.P[i] * dt_factor
         else 
             cache.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
@@ -64,9 +64,9 @@ add_bonds!(s,p,cache) = apply_interaction_kernel!(s, p, cache, add_bonds!, 2*p.c
 function apply_interaction_kernel!(s, p, cache, fnc, R)
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R)
+        for (j, o) in neighbours_bc(p, cache.st, Xi, R)
             if i < j 
-                Xj = s.X[j]
+                Xj = s.X[j] + o
                 dij = dist(Xi, Xj)
                 fnc(s, p, cache, i, j, Xi, Xj, dij)
             end
@@ -78,7 +78,7 @@ function remove_bonds!(s, p, cache)
     bonds = s.adh_bonds
     for e in edges(bonds)
         i, j = src(e), dst(e)
-        dij = dist(s.X[i], s.X[j])
+        dij = dist(p, s.X[i], s.X[j])
         rate = get_hetero_param(s, p, cache, i, j, :break_adh_rate)
         
         if rand() < 1.0 - exp(-rate * p.sim.dt) || dij > 4*p.cells.R_adh
@@ -93,10 +93,10 @@ function compute_adhesive_forces!(s, p, cache)
     bonds = s.adh_bonds
     for e in edges(bonds)
         i, j = src(e), dst(e)
-        Xi, Xj = s.X[i], s.X[j]
+        Xij = wrap(p, s.X[j] - s.X[i])
         k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-        cache.F[i] += k * (Xj - Xi)
-        cache.F[j] -= k * (Xj - Xi)
+        cache.F[i] += k * Xij
+        cache.F[j] -= k * Xij
     end
 end
 
@@ -110,17 +110,19 @@ function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_soft[i] + cache.R_soft[j] 
     if 0.0 < dij < Rij 
         k = cache.repulsion_stiffness[i] + cache.repulsion_stiffness[j]
-        cache.F[i] += (Rij - dij) * k / dij * (Xi - Xj) 
-        cache.F[j] -= (Rij - dij) * k / dij * (Xi - Xj) 
+        Xji = s.X[i] - s.X[j]
+        cache.F[i] += (Rij - dij) * k / dij * Xji
+        cache.F[j] -= (Rij - dij) * k / dij * Xji
     end
 end
 
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_attract[i] + cache.R_attract[j] 
     if 0.0 < dij < Rij
+        Xji = s.X[i] - s.X[j]
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
-        cache.F[i] -= (Rij - dij) * k / dij * (Xi - Xj) 
-        cache.F[j] += (Rij - dij) * k / dij * (Xi - Xj) 
+        cache.F[i] -= (Rij - dij) * k / dij * Xji
+        cache.F[j] += (Rij - dij) * k / dij * Xji
     end
 end
 
@@ -134,11 +136,11 @@ function compute_interaction_forces!(s, p, cache)
     R_int = p.cells.R_interact
     for i in eachindex(s.X)
         Xi = s.X[i]
-        for j in neighbours(cache.st, Xi, R_int)  # 1:i-1
+        for (j, o) in neighbours_bc(p, cache.st, Xi, R_int)  # 1:i-1
             if i < j 
-                Xj = s.X[j]
+                Xj = s.X[j] + o
                 dij² = dist²(Xi, Xj)
-                if dij² < R_int^2
+                if 0.0 < dij² < R_int^2
                     interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
                 end
             end
@@ -154,11 +156,15 @@ function compute_neighbourhood!(s, p, cache)
         cache.neighbour_avg[i] = zero(svec(p))
     end
 
+    if !p.cells.medium_active 
+        return 
+    end
+
     for i in eachindex(s.X)
         Ri = cache.R_hard[i]
-        for j in neighbours(cache.st, s.X[i], R_int) # 1:i-1
+        for (j, o) in neighbours_bc(p, cache.st, s.X[i], R_int) # 1:i-1
             if i < j 
-                Xij = s.X[j] - s.X[i]
+                Xij = s.X[j] + o - s.X[i]
                 dij = sqrt(sum(z -> z^2, Xij))
                 Rij = Ri + cache.R_hard[j]
                 if 0 < dij < 2*R_int
@@ -178,6 +184,8 @@ function compute_neighbourhood!(s, p, cache)
         nc = cache.neighbour_count[i]
         cache.neighbour_avg[i] *= (nc > 0 ? 1/nc : 0.0)
     end
+
+    return nothing
 end
 
 function compute_medium_forces!(s, p, cache)
@@ -187,16 +195,16 @@ function compute_medium_forces!(s, p, cache)
 end
 
 function project_non_overlap!(s, p, cache)
-    R_int = p.cells.R_interact
+    Rij = 2*p.cells.R_hard
     for i in eachindex(s.X)
-        Ri = cache.R_hard[i]
-        for j in neighbours(cache.st, s.X[i], 2*R_int) # 1:i-1
+        for (j, o) in neighbours_bc(p, cache.st, s.X[i], Rij) # 1:i-1
             if i < j 
-                dij² = dist²(s.X[i], s.X[j])
-                Rij = Ri + cache.R_hard[j]
+                Xi = s.X[i]
+                Xj = s.X[j] + o
+                dij² = dist²(Xi, Xj)
                 if 0.0 < dij² < Rij^2
                     dij = sqrt(dij²)
-                    Xij = s.X[j] - s.X[i]
+                    Xij = Xj - Xi
                     s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
                     s.X[j] += 0.5 * (Rij - dij) / dij * Xij
                 end
@@ -206,9 +214,16 @@ function project_non_overlap!(s, p, cache)
 end
 
 
+
 function project_onto_domain!(s, p, cache)
-    for i in eachindex(s.X)
-        R_hard = cache.R_hard[i]
-        s.X[i] = clamp.(s.X[i], p.env.domain.min .+ R_hard, p.env.domain.max .- R_hard)
-    end     
+    if p.env.periodic
+        for i in eachindex(s.X)
+            s.X[i] = @. mod(s.X[i] - p.env.domain.min, p.env.domain.size) + p.env.domain.min
+        end
+    else
+        R_hard = p.cells.R_hard
+        for i in eachindex(s.X)
+            s.X[i] = clamp.(s.X[i], p.env.domain.min .+ R_hard, p.env.domain.max .- R_hard)
+        end     
+    end
 end

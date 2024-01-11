@@ -87,14 +87,22 @@ function init_state(p)
     adh_bonds = BDMGraph(N, 10)
 
     # signals 
-    #xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+    if dim(p) == 3
+        xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
-    #u = [p.signals.types.u.init((x,y,z), p) for x in xs, y in ys, z in zs]
-    #v = similar(u)
-    #v .= 0.0
+        u = [Base.invokelatest(p.signals.types.u.init, (x,y,z), p) for x in xs, y in ys, z in zs]
+        v = similar(u)
+        v .= 0.0
+    elseif dim(p) == 2
+        xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
-    u = zeros(0,0)
-    v = similar(u)
+        u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
+        v = similar(u)
+        v .= 0.0
+    else
+        u = zeros(0,0)
+        v = similar(u)
+    end
 
     return State(; X, P, cell_type, cell_age, adh_bonds, u, v)
 end
@@ -143,11 +151,16 @@ function init_cache(p, s)
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
 
-
-    function rhs!(dz, z, p, t)
+    function rhs_periodic!(dz, z, p_ode, t)
+        dz .= 0.0
+        laplace_periodic!(dz, z, p_ode.D, p_ode.dV, 1.0)
+        @. dz -= p_ode.decay * z
+    end
+    
+    function rhs!(dz, z, p_ode, t)
         dz .= 0.0
         laplace!(dz, z, p_ode.D, p_ode.dV, 1.0)
-        @. dz -= p.decay * z
+        @. dz -= p_ode.decay * z
     end
 
     if dim(p) == 3
@@ -158,7 +171,8 @@ function init_cache(p, s)
         p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1]))
     end
 
-    ode_prob = ODEProblem(rhs!, s.u, (0.0, p.sim.t_end), p_ode)
+    ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, s.u, (0.0, p.sim.t_end), p_ode)
+    
     ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)
 
     c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], neighbour_avg = svec(p)[])
@@ -168,3 +182,29 @@ function init_cache(p, s)
     return c
 end
 
+
+
+# helper functions
+@inline function neighbours_bc(p, st, pos, r)
+    if p.env.periodic
+        return periodic_neighbours(st, pos, r)
+    else
+        return ( (i, zero(svec(p))) for i in neighbours(st, pos, r) )
+    end
+end
+
+@inline function wrap(p, dx)
+    if p.env.periodic
+        dom = p.env.domain
+        dx = @. dx - dom.size * round(dx * dom.inv_size)
+    else 
+        return dx
+    end
+end
+
+import MechanochemicalPatterns: dist², dist
+@inline function dist²(p, a, b)
+    return sqrt(sum( z -> z^2, wrap(p, a - b)))
+end
+
+dist(p, a, b) = sqrt(dist²(p, a, b))

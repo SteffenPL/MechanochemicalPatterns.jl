@@ -1,28 +1,21 @@
-# Note: all quantities carry units in terms of μm and hours.
-using Revise
-using TOML, Random, Printf, LinearAlgebra, Random
-using GLMakie, StaticArrays, ProtoStructs, ProgressMeter, Accessors, Graphs
-using BoundedDegreeGraphs, SpatialHashTables
-using OrdinaryDiffEq
-using MechanochemicalPatterns
-
-config = load_config()
-init_makie(config)
-set_theme!(theme_black())
+include("base.jl")
 
 
-dim(x::Val{n}) where n = n
-dim(p) = dim(p.env.dim)
-@inline svec(p) = SVector{dim(p), Float64}
-
-
-include("definition.jl")
-include("forces.jl")
-include("events.jl")
-include("signals.jl")
-include("simulation.jl")
-include("plots.jl")
-
+function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml")
+    Random.seed!(4)
+    p = load_parameters(fn)
+    s = init_state(p)
+    cache = init_cache(p, s)
+    
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = false, show_concentration = true)
+    display(fig)
+        
+    states = [deepcopy(s)]
+    s = states[end]
+    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
+    add_slider!(fig, s_obs, states, p)
+    display(fig)
+end
 
 Random.seed!(4)
 begin 
@@ -30,12 +23,12 @@ begin
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p; show_polarities = true, bottom_plots = false)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = false)
     display(fig)
     
     states = [deepcopy(s)]
     s = states[end]
-    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
+    @profview simulate(s, p, cache) #; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
 end
 add_slider!(fig, s_obs, states, p)
 display(fig)

@@ -12,11 +12,12 @@ function time_step!(s, p, cache)
     remove_bonds!(s, p, cache)
 
     # medium interaction 
-    compute_neighbourhood!(s, p, cache)
+    # compute_neighbourhood!(s, p, cache)
 
     # do diffusion integration 
-    # add_source!(s, p, cache)
-    # ode_time_step!(s, p, cache)
+    add_source!(s, p, cache)
+    ode_time_step!(s, p, cache)
+    follow_source!(s, p, cache)
 
     # reset forces
     reset_forces!(s, p, cache)
@@ -24,8 +25,8 @@ function time_step!(s, p, cache)
     # update forces
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
-    compute_gravity_forces!(s, p, cache)
-    compute_medium_forces!(s, p, cache)
+    # compute_gravity_forces!(s, p, cache)
+    # compute_medium_forces!(s, p, cache)
 
     # add noise 
     add_random_forces!(s, p, cache)
@@ -44,7 +45,6 @@ function time_step!(s, p, cache)
     project_onto_domain!(s, p, cache)
 
 end
-
 
 function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
 

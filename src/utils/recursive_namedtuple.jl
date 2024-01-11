@@ -18,6 +18,7 @@ end
 preprocess(x::Vector{Union{Float64, Int64}}) = preprocess(Float64.(x))
 
 preprocess(x::Vector{Float64}) = SVector{length(x), Float64}(x)
+preprocess(x::Vector{Int64}) = SVector{length(x), Int64}(x)
 
 function preprocess(x::@NamedTuple{center::SVector{N,Float64}, size::SVector{N,Float64}}) where {N}
     c = SVector{N, Float64}(x.center)
