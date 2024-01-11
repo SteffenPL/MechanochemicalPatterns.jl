@@ -15,7 +15,7 @@ function init_plot(s, p, cache;
     transparent_colors = transparency ? (c -> (c,alpha)).(colors) : colors 
     bond_color = transparency ? (bond_color, 0.5) : bond_color
 
-    fig = Figure(resolution = (1024, 768))
+    fig = Figure(resolution = (show_concentration ? 1500 : 1024 , 768))
 
     state_obs = Observable(s)
 
@@ -97,8 +97,7 @@ function init_plot(s, p, cache;
         if show_concentration
 
             xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-
-            heatmap!(xs, ys, u_node, colorrange = (0,1.5), colormap = :thermal)
+            heatmap!(xs, ys, u_node, colorrange = (0,1.5), colormap = :thermal, alpha = 0.5)
         end
 
         scatter!(X_node, 
@@ -121,6 +120,16 @@ function init_plot(s, p, cache;
             
             linesegments!(P_n, color = :black; transparency)
         end
+
+        if show_concentration
+
+            xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+            ax2 = Axis(fig[1,2], xlabel = "x", ylabel = "y", title = "u")
+            linkaxes!(ax, ax2)
+            ax2.aspect = DataAspect()
+            heatmap!(ax2, xs, ys, u_node, colorrange = (0,1.5), colormap = :thermal, interpolate = true)
+        end
+
     end
 
     return fig, state_obs

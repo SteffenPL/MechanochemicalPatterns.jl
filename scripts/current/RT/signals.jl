@@ -49,7 +49,7 @@ function follow_source!(s, p, cache)
             P_tangent = @SVector[ -s.P[i][2], s.P[i][1] ]
 
             # update polarity
-            s.P[i] += chemotaxis_strength * p.sim.dt * (1 - angle_cos) * angle_sign * P_tangent
+            s.P[i] += chemotaxis_strength * p.sim.dt * grad_l * (1 - angle_cos) * angle_sign * P_tangent
             s.P[i] = normalize(s.P[i])
         end
     end
