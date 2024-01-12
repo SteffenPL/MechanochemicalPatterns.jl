@@ -1,5 +1,5 @@
 
-function laplace!(du::Array{Float64,2}, u::Array{Float64,2}, D, dV, dt)
+function laplace!(du::AbstractArray{Float64,2}, u::AbstractArray{Float64,2}, D, dV, dt)
     Ddt = D*dt
     cx(l) = clamp(l, axes(u,1))
     cy(l) = clamp(l, axes(u,2))
@@ -13,7 +13,7 @@ function laplace!(du::Array{Float64,2}, u::Array{Float64,2}, D, dV, dt)
     return nothing
 end
 
-function laplace!(du::Array{Float64,3}, u::Array{Float64,3}, D, dV, dt)
+function laplace!(du::AbstractArray{Float64,3}, u::AbstractArray{Float64,3}, D, dV, dt)
     Ddt = D*dt
     cx(l) = clamp(l, axes(u,1))
     cy(l) = clamp(l, axes(u,2))
@@ -31,7 +31,7 @@ end
 
 
 
-function laplace_periodic!(du::Array{Float64,2}, u::Array{Float64,2}, D, dV, dt)
+function laplace_periodic!(du::AbstractArray{Float64,2}, u::AbstractArray{Float64,2}, D, dV, dt)
     Ddt = D*dt
     cx(l) = mod(l, axes(u,1))
     cy(l) = mod(l, axes(u,2))
@@ -45,7 +45,7 @@ function laplace_periodic!(du::Array{Float64,2}, u::Array{Float64,2}, D, dV, dt)
     return nothing
 end
 
-function laplace_periodic!(du::Array{Float64,3}, u::Array{Float64,3}, D, dV, dt)
+function laplace_periodic!(du::AbstractArray{Float64,3}, u::AbstractArray{Float64,3}, D, dV, dt)
     Ddt = D*dt
     cx(l) = mod(l, axes(u,1))
     cy(l) = mod(l, axes(u,2))

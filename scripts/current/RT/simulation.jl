@@ -46,7 +46,7 @@ function time_step!(s, p, cache)
 
 end
 
-function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
+function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)], show_prog = true)
 
     (; dt ) = p.sim
 
@@ -57,6 +57,8 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
     t_unsaved = 0.0
     t_lazy = 0.0
     n_steps = Int(round( (p.sim.t_end-s.t) / dt))
+
+    project_onto_domain!(s, p, cache)
 
     prog = Progress(n_steps, 1, "Simulating... ")
     for k_step in 1:n_steps 
@@ -76,7 +78,9 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)])
         t_unsaved += dt
         t_lazy += dt
         
-        next!(prog)
+        if show_prog
+            next!(prog)
+        end
     end
 
     return states

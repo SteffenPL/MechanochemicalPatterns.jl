@@ -4,6 +4,9 @@
 const BDMGraph = BoundedDegreeMetaGraph
 const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
 
+import ComponentArrays 
+const CA = ComponentArrays
+
 # The state contains all data which is needed to produce the next 
 # time step (provided the parameters are known).
 @proto mutable struct State{Dim}
@@ -97,8 +100,7 @@ function init_state(p)
         xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
         u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
-        v = similar(u)
-        v .= 0.0
+        v = [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
     else
         u = zeros(0,0)
         v = similar(u)
@@ -153,8 +155,10 @@ function init_cache(p, s)
 
     function rhs_periodic!(dz, z, p_ode, t)
         dz .= 0.0
-        laplace_periodic!(dz, z, p_ode.D, p_ode.dV, 1.0)
-        @. dz -= p_ode.decay * z
+        laplace_periodic!(dz.u, z.u, p_ode.D_u, p_ode.dV, 1.0)
+        laplace_periodic!(dz.v, z.v, p_ode.D_v, p_ode.dV, 1.0)
+        @. dz.u -= p_ode.decay_u * z.u
+        @. dz.v -= p_ode.decay_v * z.v
     end
     
     function rhs!(dz, z, p_ode, t)
@@ -168,10 +172,16 @@ function init_cache(p, s)
         p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
     elseif dim(p) == 2
         xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-        p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1]))
+        p_ode = (; D_u = p.signals.types.u.D, 
+                    decay_u = p.signals.types.u.decay, 
+                    D_v = p.signals.types.v.D, 
+                    decay_v = p.signals.types.v.decay, 
+                    dV = (xs[2]-xs[1], ys[2]-ys[1]))
     end
 
-    ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, s.u, (0.0, p.sim.t_end), p_ode)
+    z0 = CA.ComponentArray( u = s.u, v = s.v)
+
+    ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, z0, (0.0, p.sim.t_end), p_ode)
     
     ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)
 
@@ -204,7 +214,7 @@ end
 
 import MechanochemicalPatterns: dist², dist
 @inline function dist²(p, a, b)
-    return sqrt(sum( z -> z^2, wrap(p, a - b)))
+    return sum( z -> z^2, wrap(p, a - b))
 end
 
 dist(p, a, b) = sqrt(dist²(p, a, b))

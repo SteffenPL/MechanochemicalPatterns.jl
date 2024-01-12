@@ -2,6 +2,8 @@ function init_plot(s, p, cache;
                     colors = [:magenta, :lightgreen],
                     bond_color = :darkorange,
                     show_concentration = false,
+                    show_v = true,
+                    n_peaks = 0,
                     show_bonds = true,
                     show_polarities = true,
                     show_soft_spheres = false,
@@ -35,6 +37,7 @@ function init_plot(s, p, cache;
     ct = @lift $state_obs.cell_type
     E_node = @lift [get_bond($state_obs,e) for e in edges($state_obs.adh_bonds) ]
     u_node = @lift $state_obs.u
+    v_node = @lift $state_obs.v
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift 2*cache.R_hard[1:length($state_obs.X)]
     Rs_node = @lift 2*cache.R_soft[1:length($state_obs.X)]
@@ -125,11 +128,31 @@ function init_plot(s, p, cache;
 
             xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
             ax2 = Axis(fig[1,2], xlabel = "x", ylabel = "y", title = "u")
-            linkaxes!(ax, ax2)
+            
             ax2.aspect = DataAspect()
             heatmap!(ax2, xs, ys, u_node, colorrange = (0,1.5), colormap = :thermal, interpolate = true)
+
+
+            if n_peaks > 0
+                peaks = @lift filteredpeaks($state_obs, p, n_peaks)
+                pos = @lift @. Point2f(getproperty($peaks, :pos))
+                scatter!(pos, color = :red, markersize = 10.0)
+            end
+
+            if show_v 
+                ax3 = Axis(fig[1,3], xlabel = "x", ylabel = "y", title = "v")
+                ax3.aspect = DataAspect()
+
+                heatmap!(ax3, xs, ys, v_node, colorrange = (0,1.5), colormap = :thermal, interpolate = true)
+            end
+
         end
 
+        linkaxes!(ax, ax2)
+
+        if show_v 
+            linkaxes!(ax, ax3)
+        end
     end
 
     return fig, state_obs

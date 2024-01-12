@@ -20,17 +20,7 @@
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 4.0   # μm²/hr
-        decay = 0.01
-        init = """julia: 
-                        function (x, p)
-                            std = 25.0
-                            return 0 * exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
-                        end
-                        """
-
-    [signals.types.v]
-        D = 4.0   # μm²/hr
+        D = 5.0   # μm²/hr
         decay = 0.01
         init = """julia: 
                         function (x, p)
@@ -41,53 +31,51 @@
 
 [cells]
     R_soft = 10.0        # μm
-    R_hard = 3.0         # μm 
+    R_hard = 5.0         # μm 
     R_adh = 12.0         # μm
     R_attract = 0.0     # μm
     R_interact = 12.0    # μm (maximal interaction range)
     lifespan = "julia: NaN64" # hr
-    repulsion_stiffness = 8.0 # 8.0
-
+    repulsion_stiffness = 8.0
     attraction_stiffness = 0.0
-    sigma = 0.0         # μm / √hr (for additive white noise on positions)
-    sigma_p = 1.0       # μm / √hr (for active brownian particles, acts on polarity)
+    sigma = 0.0         # μm / √hr (for additive white noise)
+    sigma_p = 0.5       # μm / √hr (for active brownian particles, acts on polarity)
     plithotaxis = 0.0
     v_self_prop = 25.0      # μm/hr (speed of cells in cluster)
     
-    new_adh_rate = 0.0  # 1/hr
+    new_adh_rate = 1.0  # 1/hr
     break_adh_rate = 1.0  # 1/hr
     adhesion_stiffness = 0.0 # 4.0  # 0.0
     
     signal_emission = 2.0
-    chemotaxis_strength = 50.0 # 0.0 # 400.0
+    chemotaxis_strength = 400.0 # 0.0 # 500.0
 
     init_pos = {uniform = "domain"}
 
 
     medium_active = false
     medium_repulsion = 0.0 # μm/hr
-    medium_alpha = 2.0      # n.d.
+    medium_alpha = 1.0      # n.d.
     medium_slowdown = 1.0   # n.d.
 
-    [cells.types.distal]
+    [cells.types.proximal]
         ID = 1
         N = 1500
 
-        new_adh_rate = 0.0  # 1/hr
-        adhesion_stiffness = 0.0
 
-        signal_emission = 2.0
-        chemotaxis_strength = 50.0
+        init_pos = {normal = {mean = [0.0,0.0], std = [400.0, 400.0]}}
 
-
-    [cells.types.proximal]
+    [cells.types.distal]
         ID = 2
-        N = 1500
+        N = 0
 
+        new_adh_rate = 1.0  # 1/hr
+        adhesion_stiffness = 1.0
 
-        init_pos = {normal = {mean = [0.0,0.0], std = [300.0, 300.0]}}
+        signal_emission = 0.0
+        chemotaxis_strength = 0.0
 
     [cells.interaction]
-        adhesion_stiffness = 0.0
-        new_adh_rate = 0.0  # 1/hr
-        break_adh_rate = 2.0  # hr
+        adhesion_stiffness = 0.5
+        new_adh_rate = 1.0  # 1/hr
+        break_adh_rate = 1.0  # hr

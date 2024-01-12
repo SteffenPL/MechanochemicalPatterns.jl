@@ -1,9 +1,12 @@
 using OrdinaryDiffEq.SciMLBase 
 
+using ComponentArrays: ComponentArray
+
 function ode_time_step!(s, p, cache)
-    set_u!(cache.ode_integrator, s.u)
+    set_u!(cache.ode_integrator, ComponentArray( u = s.u, v = s.v) )
     step!(cache.ode_integrator, p.sim.dt)
-    s.u .= cache.ode_integrator.u
+    s.u .= cache.ode_integrator.u.u 
+    s.v .= cache.ode_integrator.u.v
     return nothing
 end
 
@@ -14,13 +17,21 @@ function indexat(s, p, cache, X, offset = 0)
     return I
 end
 
+function indexpos(s, p, I)
+    return p.env.domain.min .+ (I .- 0.5) ./ p.signals.grid .* p.env.domain.size
+end
+
 function add_source!(s, p, cache)
     for i in eachindex(s.X)
         ct = s.cell_type[i]
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
         I = indexat(s, p, cache, s.X[i])
-        s.u[I...] += signal_emission * p.sim.dt
+        if ct == 1 
+            s.u[I...] += signal_emission * p.sim.dt
+        else 
+            s.v[I...] += signal_emission * p.sim.dt
+        end
     end
 end
 
@@ -35,9 +46,14 @@ function follow_source!(s, p, cache)
         I = indexat(s, p, cache, s.X[i], 1)  # only interior indices
 
         # get gradient
-        grad = @SVector[ s.u[(I .+ (1,0))...] - s.u[(I .+ (-1,0))...], 
+        grad_u = @SVector[ s.u[(I .+ (1,0))...] - s.u[(I .+ (-1,0))...], 
                          s.u[(I .+ (0,1))...] - s.u[(I .+ (0,-1))...]]  .* inv_dV
         
+        grad_v = @SVector[ s.v[(I .+ (1,0))...] - s.v[(I .+ (-1,0))...], 
+                        s.v[(I .+ (0,1))...] - s.v[(I .+ (0,-1))...]]  .* inv_dV
+                     
+                        
+        grad = ct == 1 ? grad_u : grad_v
         grad_l = sqrt(sum( z->z^2, grad))
 
         if grad_l > 0.0
