@@ -11,7 +11,7 @@ begin
     s, cache = presimulate(p, 1, 1.0)
 
     states = [deepcopy(s)]
-    fig, s_obs = init_plot(s, p, show_frustration = true)
+    fig, s_obs = init_plot(s, p)
     display(fig)
 
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
@@ -23,6 +23,6 @@ end
 fig, s_obs = init_plot(s, p)
 display(fig)
 
-record(fig, "scripts/MR/videos/example.mp4", 1:20:length(states); framerate = 30) do i
+record(fig, "scripts/MR/videos/example2.mp4", 1:2:length(states); framerate = 30) do i
     update_plot!(fig, s_obs, states[i], p)
 end
