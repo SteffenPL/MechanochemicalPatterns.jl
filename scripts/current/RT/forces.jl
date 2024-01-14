@@ -27,7 +27,7 @@ function update_polarity!(s, p, cache)
         s.P[i] = safe_normalize(s.P[i])
 
         nF = norm(cache.dX[i])
-        if nF > 0
+        if nF > 0 && cache.neighbour_count[i] < 5
             dFP = dot(s.P[i], cache.dX[i])/nF
             PT = nF * (1 - dFP) * safe_normalize(cache.dX[i] - dFP*nF * s.P[i])
             s.P[i] += get_param(p, ct, :CIL, 0.0) * p.sim.dt * PT

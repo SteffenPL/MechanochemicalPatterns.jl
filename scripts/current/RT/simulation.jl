@@ -54,8 +54,6 @@ function time_step!(s, p, cache)
     # polarity dynamics
     update_polarity!(s, p, cache)
 
-
-
 end
 
 function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)], show_prog = true)

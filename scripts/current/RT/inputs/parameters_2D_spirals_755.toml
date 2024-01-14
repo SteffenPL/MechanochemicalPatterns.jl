@@ -21,7 +21,7 @@
 
     [signals.types.u]
         D = 8.0   # μm²/hr
-        decay = 3e-3
+        decay = 2e-3
         init = """julia: 
                         function (x, p)
                             std = 25.0
@@ -40,7 +40,7 @@
 
     attraction_stiffness = 0.0
     sigma = 0.0         # μm / √hr (for additive white noise on positions)
-    sigma_p = 0.5       # μm / √hr (for active brownian particles, acts on polarity)
+    sigma_p = 0.0       # μm / √hr (for active brownian particles, acts on polarity)
     plithotaxis = 0.0
     v_self_prop = 15.0      # μm/hr (speed of cells in cluster)
     
@@ -53,7 +53,7 @@
 
     init_pos = {uniform = "domain"}
 
-    CIL = 0.01
+    CIL = 0.1
 
     medium_active = false
     medium_repulsion = 0.0 # μm/hr
@@ -62,7 +62,7 @@
 
     [cells.types.distal]
         ID = 1
-        N = 1500
+        N = 1000
 
         signal_emission = 1e2
         chemotaxis_strength = 5e1
@@ -70,7 +70,7 @@
 
     [cells.types.proximal]
         ID = 2
-        N = 1500
+        N = 1000
 
         signal_emission = 0.0
         chemotaxis_strength = 0e1
