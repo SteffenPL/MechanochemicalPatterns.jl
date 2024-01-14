@@ -7,12 +7,17 @@ function time_step!(s, p, cache)
     update_cache!(s, p, cache)
     updatetable!(cache.st, s.X)
 
+    # track velocity 
+    for i in eachindex(s.X)
+        cache.dX[i] = s.X[i]
+    end
+
     # cell events
     add_bonds!(s, p, cache)
     remove_bonds!(s, p, cache)
 
     # medium interaction 
-    # compute_neighbourhood!(s, p, cache)
+    compute_neighbourhood!(s, p, cache)
 
     # do diffusion integration 
     add_source!(s, p, cache)
@@ -26,14 +31,11 @@ function time_step!(s, p, cache)
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     # compute_gravity_forces!(s, p, cache)
-    # compute_medium_forces!(s, p, cache)
+    compute_medium_forces!(s, p, cache)
 
     # add noise 
     add_random_forces!(s, p, cache)
-
-    # polarity dynamics
     add_self_prop!(s, p, cache)
-    update_polarity!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
@@ -43,6 +45,16 @@ function time_step!(s, p, cache)
     # deal with constraints
     project_non_overlap!(s, p, cache)
     project_onto_domain!(s, p, cache)
+
+    # update velocity
+    for i in eachindex(s.X)
+        cache.dX[i] = (wrap(p, s.X[i] - cache.dX[i])) / p.sim.dt
+    end
+
+    # polarity dynamics
+    update_polarity!(s, p, cache)
+
+
 
 end
 

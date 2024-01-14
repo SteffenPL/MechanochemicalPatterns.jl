@@ -40,6 +40,7 @@ end
 
     # forces 
     const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
+    const dX::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
 
     # parameters 
     N::Int = 0
@@ -94,13 +95,20 @@ function init_state(p)
         xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
         u = [Base.invokelatest(p.signals.types.u.init, (x,y,z), p) for x in xs, y in ys, z in zs]
-        v = similar(u)
-        v .= 0.0
+        v = if hasproperty(p.signals.types, :v)
+            [Base.invokelatest(p.signals.types.v.init, (x,y,z), p) for x in xs, y in ys, z in zs]
+        else
+            zeros(0,0,0)
+        end
     elseif dim(p) == 2
         xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
         u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
-        v = [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
+        v = if hasproperty(p.signals.types, :v)
+            [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
+        else
+            zeros(0,0)
+        end
     else
         u = zeros(0,0)
         v = similar(u)
@@ -154,38 +162,59 @@ function init_cache(p, s)
                             dom.max + margin .* dom.size)
 
     function rhs_periodic!(dz, z, p_ode, t)
+        p_ = p_ode.p
         dz .= 0.0
-        laplace_periodic!(dz.u, z.u, p_ode.D_u, p_ode.dV, 1.0)
-        laplace_periodic!(dz.v, z.v, p_ode.D_v, p_ode.dV, 1.0)
-        @. dz.u -= p_ode.decay_u * z.u
-        @. dz.v -= p_ode.decay_v * z.v
+
+        if hasproperty(p_.signals.types, :u)
+            pu = p_.signals.types.u
+            laplace_periodic!(dz.u, z.u, pu.D, p_ode.dV)
+            @. dz.u -= pu.decay * z.u
+        end
+
+        if hasproperty(p_.signals.types, :v)
+            pv = p_.signals.types.v
+            laplace_periodic!(dz.v, z.v, pv.D, p_ode.dV)
+            @. dz.v -= pv.decay * z.v
+        end
     end
     
     function rhs!(dz, z, p_ode, t)
+        p_ = p_ode.p
         dz .= 0.0
-        laplace!(dz, z, p_ode.D, p_ode.dV, 1.0)
-        @. dz -= p_ode.decay * z
+
+        if hasproperty(p_.signals.types, :u)
+            pu = p_.signals.types.u
+            laplace!(dz.u, z.u, pu.D, p_ode.dV)
+            @. dz.u -= pu.decay * z.u
+        end
+
+        if hasproperty(p_.signals.types, :v)
+            pv = p_.signals.types.v
+            laplace!(dz.v, z.v, pv.D, p_ode.dV)
+            @. dz.v -= pv.decay * z.v
+        end
     end
 
     if dim(p) == 3
         xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-        p_ode = (; D = p.signals.types.u.D, decay = p.signals.types.u.decay, dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+        p_ode = (;  p = p,
+                    dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
     elseif dim(p) == 2
         xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-        p_ode = (; D_u = p.signals.types.u.D, 
-                    decay_u = p.signals.types.u.decay, 
-                    D_v = p.signals.types.v.D, 
-                    decay_v = p.signals.types.v.decay, 
+        p_ode = (;  p = p,
                     dV = (xs[2]-xs[1], ys[2]-ys[1]))
     end
 
-    z0 = CA.ComponentArray( u = s.u, v = s.v)
+    z0 = CA.ComponentArray(u = s.u, v = s.v)
 
     ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, z0, (0.0, p.sim.t_end), p_ode)
     
-    ode_integrator = init(ode_prob, ROCK2(); save_everystep=false)
+    ode_integrator = init(ode_prob, Heun(); 
+                save_everystep=false, 
+                reltol = get(p.signals, :reltol, 1e-3), 
+                abstol = get(p.signals, :abstol, 1e-6))
 
-    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], neighbour_avg = svec(p)[])
+    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], dX = svec(p)[], neighbour_avg = svec(p)[])
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
 

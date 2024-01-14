@@ -23,12 +23,13 @@ function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing)
         
     states = [deepcopy(s)]
     s = states[end]
-    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
+    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
     add_slider!(fig, s_obs, states, p)
     display(fig)
 
-    return states
+    return states, cache
 end
+
 
 Random.seed!(4)
 begin 
@@ -36,12 +37,12 @@ begin
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = false)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = false, show_concentration = true, show_v = false)
     display(fig)
     
     states = [deepcopy(s)]
     s = states[end]
-    @profview simulate(s, p, cache) #; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
+    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
 end
 add_slider!(fig, s_obs, states, p)
 display(fig)

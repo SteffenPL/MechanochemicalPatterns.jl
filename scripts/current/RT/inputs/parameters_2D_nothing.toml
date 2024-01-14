@@ -30,30 +30,29 @@
                         """
 
 [cells]
-    R_soft = 15.0        # μm
-    R_hard = 5.0         # μm 
+    R_soft = 12.0        # μm
+    R_hard = -1.0         # μm 
     R_adh = 12.0         # μm
     R_attract = 0.0     # μm
     R_interact = 12.0    # μm (maximal interaction range)
     lifespan = "julia: NaN64" # hr
-    repulsion_stiffness = 2.0 # 8.0
+    repulsion_stiffness = 0.0 # 8.0
 
     attraction_stiffness = 0.0
     sigma = 0.0         # μm / √hr (for additive white noise on positions)
-    sigma_p = 0.0       # μm / √hr (for active brownian particles, acts on polarity)
+    sigma_p = 1.0       # μm / √hr (for active brownian particles, acts on polarity)
     plithotaxis = 0.0
-    v_self_prop = 15.0      # μm/hr (speed of cells in cluster)
+    v_self_prop = 20.0      # μm/hr (speed of cells in cluster)
     
-    new_adh_rate = 1.0  # 1/hr
-    break_adh_rate = 3.0  # 1/hr
-    adhesion_stiffness = 1.0 # 4.0  # 0.0
+    new_adh_rate = 0.0  # 1/hr
+    break_adh_rate = 1.0  # 1/hr
+    adhesion_stiffness = 0.0 # 4.0  # 0.0
     
     signal_emission = 2.0
     chemotaxis_strength = 0.0 # 0.0 # 400.0
 
     init_pos = {uniform = "domain"}
 
-    CIL = 1.0
 
     medium_active = false
     medium_repulsion = 0.0 # μm/hr
@@ -62,18 +61,21 @@
 
     [cells.types.distal]
         ID = 1
-        N = 150
+        N = 1500
+
+        new_adh_rate = 0.0  # 1/hr
+        adhesion_stiffness = 0.0
 
         signal_emission = 1e2
-        chemotaxis_strength = 0e1
+        chemotaxis_strength = 0.0
 
 
     [cells.types.proximal]
         ID = 2
-        N = 150
+        N = 1500
 
         signal_emission = 0.0
-        chemotaxis_strength = 0e1
+        chemotaxis_strength = 0.0
 
         init_pos = {normal = {mean = [0.0,0.0], std = [300.0, 300.0]}}
 

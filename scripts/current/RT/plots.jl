@@ -2,7 +2,7 @@ function init_plot(s, p, cache;
                     colors = [:magenta, :lightgreen],
                     bond_color = :darkorange,
                     show_concentration = false,
-                    show_v = true,
+                    show_v = false,
                     n_peaks = 0,
                     show_bonds = true,
                     show_polarities = true,
@@ -35,12 +35,14 @@ function init_plot(s, p, cache;
 
     X_node = @lift $state_obs.X
     ct = @lift $state_obs.cell_type
-    E_node = @lift [get_bond($state_obs,e) for e in edges($state_obs.adh_bonds) ]
+    E_node = lift(state_obs) do s 
+        [get_bond(s,e) for e in edges(s.adh_bonds) ]
+    end
     u_node = @lift $state_obs.u
     v_node = @lift $state_obs.v
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
-    R_node = @lift 2*cache.R_hard[1:length($state_obs.X)]
-    Rs_node = @lift 2*cache.R_soft[1:length($state_obs.X)]
+    R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.R_hard[1:length($state_obs.X)]
+    Rs_node = @lift (dim(p) == 2 ? 2 : 1)*cache.R_soft[1:length($state_obs.X)]
 
     # create plot
     if dim(p) == 3
@@ -56,15 +58,15 @@ function init_plot(s, p, cache;
 
     if dim(p) == 3
         meshscatter!(X_node, 
-                    markersize = R_node, space = :data, 
-                    color = ct, colormap = colors; transparency)
+                   markersize = R_node, markerspace = :data, 
+                   color = ct, colormap = colors; transparency)
 
         if show_soft_spheres
             meshscatter!(X_node, 
-                        markersize = Rs_node, space = :data, 
+                        markersize = Rs_node, markerspace = :data, 
                         color = ct, colormap = transparent_colors; transparency)
         end 
-
+        
         if show_bonds
             linesegments!(E_node, color = bond_color, linewidth = 2; transparency)
         end 
@@ -74,7 +76,7 @@ function init_plot(s, p, cache;
                 Tuple{SVecD,SVecD}[(s.X[j], s.X[j] + p.cells.R_soft * s.P[j]) for j in eachindex(s.X) ]
             end
             
-            linesegments!(P_n, color = :black; transparency)
+            linesegments!(P_n, color = :black, linewidth = 2; transparency)
         end
 
         if bottom_plots && dim(p) == 3
@@ -90,8 +92,16 @@ function init_plot(s, p, cache;
 
         # create signal plot
         if show_concentration && dim(p) == 3
-            ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
-            volume!(u_node, colorrange = (0,1.5))
+            #ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
+            #volume!(u_node, colorrange = (0,1.0))
+            #olorbar(fig[1,3], ax2)
+            u_flat = @lift dropdims(maximum($state_obs.u, dims = 3), dims = 3)
+            u_max = @lift (0.0, 0.01 + maximum($state_obs.u))
+            ax2 = Axis(fig[1,2], xlabel = "x", ylabel = "y", title = "u")
+            ax2.aspect = DataAspect()
+            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+            hm = heatmap!(ax2, xs, ys, u_flat, colormap = :thermal, interpolate = true, colorrange = u_max)
+            Colorbar(fig[1,3], hm)
         end
     end
 
@@ -110,6 +120,9 @@ function init_plot(s, p, cache;
         scatter!(X_node, 
                     markersize = Rs_node, markerspace = :data, marker = Makie.Circle,
                     color = ct, colormap = transparent_colors)
+
+        xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
+        ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
 
 
         if show_bonds
@@ -148,7 +161,9 @@ function init_plot(s, p, cache;
 
         end
 
-        linkaxes!(ax, ax2)
+        xlims!(ax2, p.env.domain.min[1], p.env.domain.max[1])
+        ylims!(ax2, p.env.domain.min[2], p.env.domain.max[2])
+        #linkaxes!(ax, ax2)
 
         if show_v 
             linkaxes!(ax, ax3)
@@ -188,3 +203,11 @@ function play_animation!(fig, state_obs, states, skip = 10)
         sleep(0.01)
     end
 end
+
+
+# begin 
+#     fig = Figure()
+#     ax = Axis3(fig[1,1], aspect = :data)
+#     meshscatter!(ax, Point3f.([(0,0,0),(0,0,1),(0,0,2)]), markersize = 0.5)
+#     fig
+# end
