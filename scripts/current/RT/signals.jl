@@ -28,11 +28,11 @@ function add_source!(s, p, cache)
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
         I = indexat(s, p, cache, s.X[i])
-        if ct == 1 
+        #if ct == 1 
             s.u[I...] += signal_emission * inv_dvol * p.sim.dt
-        else 
-            s.u[I...] += signal_emission * inv_dvol * p.sim.dt
-        end
+        #else 
+        #    s.u[I...] += signal_emission * inv_dvol * p.sim.dt
+        #end
     end
 end
 

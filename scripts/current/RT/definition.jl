@@ -55,6 +55,7 @@ end
     const new_adh_rate::Vector{Float64} = Float64[]
     const break_adh_rate::Vector{Float64} = Float64[]
     const run_time::Vector{Float64} = Float64[]
+    const lifespan::Vector{Float64} = Float64[]
 
     # neighbour avg directions 
     const neighbour_avg::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
@@ -77,7 +78,7 @@ Base.show(io::IO, c::Cache) = @printf io "Cache(%d cells)" c.N
 
 function init_state(p)
     N = sum(ct.N for ct in p.cells.types)
-    cell_type = [ i for ct in p.cells.types for i in fill(ct.ID, ct.N) ]
+    cell_type = [ k for (k, ct) in enumerate(p.cells.types) for i in 1:ct.N ]
     shuffle!(cell_type)
 
     # initial cell positions
@@ -91,23 +92,25 @@ function init_state(p)
     adh_bonds = BDMGraph(N, 10)
 
     # signals 
-    if dim(p) == 3
-        xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+    if hasproperty(p, :signals)
+        if dim(p) == 3
+            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
-        u = [Base.invokelatest(p.signals.types.u.init, (x,y,z), p) for x in xs, y in ys, z in zs]
-        v = if hasproperty(p.signals.types, :v)
-            [Base.invokelatest(p.signals.types.v.init, (x,y,z), p) for x in xs, y in ys, z in zs]
-        else
-            zeros(0,0,0)
-        end
-    elseif dim(p) == 2
-        xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+            u = [Base.invokelatest(p.signals.types.u.init, (x,y,z), p) for x in xs, y in ys, z in zs]
+            v = if hasproperty(p.signals.types, :v)
+                [Base.invokelatest(p.signals.types.v.init, (x,y,z), p) for x in xs, y in ys, z in zs]
+            else
+                zeros(0,0,0)
+            end
+        elseif dim(p) == 2
+            xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
 
-        u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
-        v = if hasproperty(p.signals.types, :v)
-            [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
-        else
-            zeros(0,0)
+            u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
+            v = if hasproperty(p.signals.types, :v)
+                [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
+            else
+                zeros(0,0)
+            end
         end
     else
         u = zeros(0,0)
@@ -195,24 +198,29 @@ function init_cache(p, s)
         end
     end
 
-    if dim(p) == 3
-        xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-        p_ode = (;  p = p,
-                    dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
-    elseif dim(p) == 2
-        xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-        p_ode = (;  p = p,
-                    dV = (xs[2]-xs[1], ys[2]-ys[1]))
+    if hasproperty(p, :signals)
+        if dim(p) == 3
+            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+            p_ode = (;  p = p,
+                        dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
+        elseif dim(p) == 2
+            xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+            p_ode = (;  p = p,
+                        dV = (xs[2]-xs[1], ys[2]-ys[1]))
+        end
+
+        z0 = CA.ComponentArray(u = s.u, v = s.v)
+
+        ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, z0, (0.0, p.sim.t_end), p_ode)
+        
+        ode_integrator = init(ode_prob, Heun(); 
+                    save_everystep=false, 
+                    reltol = get(p.signals, :reltol, 1e-3), 
+                    abstol = get(p.signals, :abstol, 1e-6))
+    else
+        ode_prob = nothing
+        ode_integrator = nothing
     end
-
-    z0 = CA.ComponentArray(u = s.u, v = s.v)
-
-    ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, z0, (0.0, p.sim.t_end), p_ode)
-    
-    ode_integrator = init(ode_prob, Heun(); 
-                save_everystep=false, 
-                reltol = get(p.signals, :reltol, 1e-3), 
-                abstol = get(p.signals, :abstol, 1e-6))
 
     c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], dX = svec(p)[], neighbour_avg = svec(p)[])
     resize_cache!(s, p, c)

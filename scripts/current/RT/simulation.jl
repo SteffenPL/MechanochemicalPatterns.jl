@@ -1,11 +1,15 @@
-
 function time_step!(s, p, cache) 
 
     cell_divisions!(s, p, cache)
 
     # update cache (in case of cell division)
     update_cache!(s, p, cache)
+
+    # change cell parameters
+    modulate_parameters!(s, p, cache)
+
     updatetable!(cache.st, s.X)
+
 
     # track velocity 
     for i in eachindex(s.X)
@@ -20,9 +24,11 @@ function time_step!(s, p, cache)
     compute_neighbourhood!(s, p, cache)
 
     # do diffusion integration 
-    add_source!(s, p, cache)
-    ode_time_step!(s, p, cache)
-    follow_source!(s, p, cache)
+    if hasproperty(p, :signals)
+        add_source!(s, p, cache)
+        ode_time_step!(s, p, cache)
+        follow_source!(s, p, cache)
+    end
 
     # reset forces
     reset_forces!(s, p, cache)
@@ -31,6 +37,7 @@ function time_step!(s, p, cache)
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     # compute_gravity_forces!(s, p, cache)
+    add_center_gravity!(s, p, cache)
     compute_medium_forces!(s, p, cache)
 
     # add noise 
@@ -65,7 +72,6 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)], s
     resize_cache!(s, p, cache)
 
     t_unsaved = 0.0
-    t_lazy = 0.0
     n_steps = Int(round( (p.sim.t_end-s.t) / dt))
 
     project_onto_domain!(s, p, cache)
@@ -80,13 +86,11 @@ function simulate(s, p, cache; callbacks = Function[], states = [deepcopy(s)], s
             push!(states, deepcopy(s))
             #push!(states, partialcopy(s, t_lazy > p.signals.saveat))
             t_unsaved = 0.0
-            t_lazy = t_lazy > p.signals.saveat ? 0.0 : t_lazy
 
             # call callbacks as well
             foreach(f -> f(s, p, cache), callbacks)
         end
         t_unsaved += dt
-        t_lazy += dt
         
         if show_prog
             next!(prog)

@@ -12,6 +12,12 @@ function reset_forces!(s, p, cache)
     end
 end
 
+function add_center_gravity!(s, p, cache)
+    for i in eachindex(s.X)
+        cache.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
+    end
+end
+
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
     for i in eachindex(s.X)
@@ -220,7 +226,6 @@ function project_non_overlap!(s, p, cache)
         end
     end
 end
-
 
 
 function project_onto_domain!(s, p, cache)

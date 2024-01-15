@@ -37,14 +37,14 @@ function atboundary(u, I)
 end
 
 function filteredpeaks(s, p, k)
-    peaks = Images.findlocalmaxima(s.v)
+    peaks = Images.findlocalmaxima(s.u)
     filter!( pk -> !atboundary(s.u, pk.I), peaks)
 
-    u_values = s.v[peaks]
+    u_values = s.u[peaks]
     peaks = peaks[sortperm(u_values, rev=true)]
     peaks = first(peaks, k)
 
-    return [ (I = pk.I, pos = indexpos(s,p, pk.I), u = s.v[pk]) for pk in peaks]
+    return [ (I = pk.I, pos = indexpos(s,p, pk.I), u = s.u[pk]) for pk in peaks]
 end
 
 # filteredpeaks(states[end], p, 10)

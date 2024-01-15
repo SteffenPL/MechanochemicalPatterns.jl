@@ -1,11 +1,12 @@
 include("../base.jl")
+using KernelDensity, Dates
 
 Random.seed!(1)
 fn = "scripts/current/RT/inputs/parameters_2D.toml"
 p = load_parameters(fn)
 p = @set p.sim.t_end = 80.0
 
-id = "blub"
+id = Dates.format(now(), "yyyy-mm-dd_HH-MM")
 
 s = init_state(p)
 cache = init_cache(p, s)
@@ -22,32 +23,44 @@ s_end = states[end]
 main_peak = filteredpeaks(s_end, p, 10)[4]
 display(fig)
 
+for ct in 1:2
+    ct_name = ["proximal", "distal"][ct]
+    ct_col = [:magenta, :green][ct]
 
-# compute number of cells within radius 
-R = 100.0
+    x = s_end.X[s_end.cell_type .== ct]
+    dom = p.env.domain
+    xs = LinRange(dom.min[1], dom.max[1], p.signals.grid[1])
+    ys = LinRange(dom.min[2], dom.max[2], p.signals.grid[2])
+    kd = kde( (getindex.(x, 1), getindex.(x, 2)); boundary = ((dom.min[1],dom.max[1]),(dom.min[2],dom.max[2])), npoints=tuple(p.signals.grid...))
 
-# plot circle
-ax1 = content(fig[1,1])
-ax2 = content(fig[1,3])
-arc!(ax1, main_peak.pos, R, 0.0, 2π, color = :red)
-arc!(ax2, main_peak.pos, R, 0.0, 2π, color = :red)
-save("scripts/current/RT/outputs/local_conv_state_$(id)_R=$(R).png", fig)
-display(fig)
+    # compute number of cells within radius 
+    R = 100.0
+    fig = Figure()
+    Axis(fig[1,1], xlabel = "x", ylabel = "y")
+    current_axis().aspect = DataAspect()
+    heatmap!(xs, ys, kd.density, colormap = cgrad([:black,ct_col]), colorrange = (0,5e-6))
+    main_peak = filteredpeaks((;u=kd.density), p, 10)[1]
+    scatter!(main_peak.pos, color = :red, markersize = 10.0)
+    arc!(main_peak.pos, R, 0.0, 2π, color = :red)
+    save("scripts/current/RT/outputs/state_$(ct_name)_$(id)_R=$(R).png", fig)
+    fig 
 
-# compute number of cells within radius
-function count_cells_within_radius(s, p, main_peak, R)
-    return count(dist²(p, s.X[i], main_peak.pos) < R^2 for i in eachindex(s.X) if s.cell_type[i] == 2)
-end
 
-cell_count = [count_cells_within_radius(s, p, main_peak, R) for s in states]
-ts = [s.t for s in states]
+    # compute number of cells within radius
+    function count_cells_within_radius(s, p, main_peak, R)
+        return count(dist²(p, s.X[i], main_peak.pos) < R^2 for i in eachindex(s.X) if s.cell_type[i] == ct)
+    end
 
-with_theme(Theme()) do
-    fig2 = Figure()
-    Axis(fig2[1,1], xlabel = "time", ylabel = "cell count")
-    lines!(ts, cell_count)
-    save("scripts/current/RT/outputs/local_conv_single_$(id)_R=$(R).png", fig2)
-    display(fig2)
+    cell_count = [count_cells_within_radius(s, p, main_peak, R) for s in states]
+    ts = [s.t for s in states]
+
+    with_theme(Theme()) do
+        fig2 = Figure()
+        Axis(fig2[1,1], xlabel = "time", ylabel = "cell count")
+        lines!(ts, cell_count)
+        save("scripts/current/RT/outputs/growth_$(ct_name)_$(id)_R=$(R).png", fig2)
+        display(fig2)
+    end
 end
 
 

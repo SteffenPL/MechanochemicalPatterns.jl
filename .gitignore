@@ -1,9 +1,12 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
+*.mp4
+*.png
 /Manifest.toml
 /docs/build/
 /input/data/
 /scripts/config.toml
 /output/
 .vscode
+/input/
