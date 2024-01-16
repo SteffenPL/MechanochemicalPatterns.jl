@@ -36,7 +36,7 @@ end
 
 begin 
     last_seed = rand(rng_seeds, 1:1000)
-    Random.seed!(342)
+    Random.seed!(last_seed)
 
     printstyled("Setting seed to $last_seed\n", color = :green)
 
@@ -75,10 +75,12 @@ function save_video(states, p, s_obs, fig, seed, folder = "./scripts/current/RT/
         update_plot!(fig, s_obs, states[i], p)
     end
 
-    cp(fn, joinpath(folder, "parameters.toml"))
-
-    open(joinpath(folder, "seed.txt"), "w") do io
-        write(io, string(seed))
+    if !isfile(joinpath(folder, "parameters.toml"))
+        cp(fn, joinpath(folder, "parameters.toml"))
+    
+        open(joinpath(folder, "seed.txt"), "w") do io
+            write(io, string(seed))
+        end
     end
 end
 
