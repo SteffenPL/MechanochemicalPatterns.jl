@@ -31,7 +31,7 @@ end
 timeindex(states, t) = findfirst(s -> s.t >= t, states)
 p = (p..., signals = (; grid = SVector{2,Int64}(100, 100)))
 
-ct = 2
+ct = 1
 i2 = timeindex(states, 25.0)
 Δt = timeindex(states, 0.1) - timeindex(states, 0.0) 
 
