@@ -2,7 +2,7 @@ function cell_divisions!(s, p, cache)
     s.cell_age .+= p.sim.dt
 
     for i in eachindex(s.X)
-        if s.cell_age[i] > p.cells.lifespan
+        if s.cell_age[i] > cache.lifespan[i]
             if dim(p) == 2 
                 X = s.X[i]
                 P = s.P[i]

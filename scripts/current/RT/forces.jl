@@ -6,10 +6,15 @@
     end
 end
 
-
 function reset_forces!(s, p, cache)
     for i in eachindex(cache.F)
         cache.F[i] = zero(svec(p))
+    end
+end
+
+function add_center_gravity!(s, p, cache)
+    for i in eachindex(s.X)
+        cache.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
     end
 end
 
@@ -23,19 +28,28 @@ end
 # polarity dynamics 
 function update_polarity!(s, p, cache)
     for i in eachindex(s.X)
+        ct = s.cell_type[i]
         s.P[i] += randn(svec(p)) * p.cells.sigma_p * sqrt(p.sim.dt)
-        s.P[i] /= norm(s.P[i])
+        s.P[i] = safe_normalize(s.P[i])
 
-        if p.cells.medium_active && cache.neighbour_count[i] > 6 
-            nf = sqrt(sum(z -> z^2, cache.F[i]))
-            fp = @. cache.F[i]/nf - s.P[i]
-            align = dot(s.P[i], cache.F[i]) / nf
-            fp = fp
-            fp /= norm(fp)
-
-            s.P[i] += fp * (1-align) * p.cells.plithotaxis * p.sim.dt
-            s.P[i] /= norm(s.P[i])
+        nF = norm(cache.dX[i])
+        if nF > 0 && cache.neighbour_count[i] < 5
+            dFP = dot(s.P[i], cache.dX[i])/nF
+            PT = nF * (1 - dFP) * safe_normalize(cache.dX[i] - dFP*nF * s.P[i])
+            s.P[i] += get_param(p, ct, :CIL, 0.0) * p.sim.dt * PT
+            s.P[i] = safe_normalize(s.P[i])
         end
+
+        # if p.cells.medium_active && p.cells.plithotaxis > 0 && cache.neighbour_count[i] > 6 
+        #     nf = sqrt(sum(z -> z^2, cache.F[i]))
+        #     fp = @. cache.F[i]/nf - s.P[i]
+        #     align = dot(s.P[i], cache.F[i]) / nf
+        #     fp = fp
+        #     fp /= norm(fp)
+
+        #     s.P[i] += fp * (1-align) * p.cells.plithotaxis * p.sim.dt
+        #     s.P[i] /= norm(s.P[i])
+        # end
     end
 end
 
@@ -212,7 +226,6 @@ function project_non_overlap!(s, p, cache)
         end
     end
 end
-
 
 
 function project_onto_domain!(s, p, cache)

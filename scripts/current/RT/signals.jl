@@ -22,20 +22,32 @@ function indexpos(s, p, I)
 end
 
 function add_source!(s, p, cache)
+    inv_dvol =  1.0 / prod(p.env.domain.size ./ p.signals.grid) 
     for i in eachindex(s.X)
         ct = s.cell_type[i]
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
         I = indexat(s, p, cache, s.X[i])
-        if ct == 1 
-            s.u[I...] += signal_emission * p.sim.dt
-        else 
-            s.v[I...] += signal_emission * p.sim.dt
-        end
+        #if ct == 1 
+            s.u[I...] += signal_emission * inv_dvol * p.sim.dt
+        #else 
+        #    s.u[I...] += signal_emission * inv_dvol * p.sim.dt
+        #end
     end
 end
 
 cross_2d(a, b) = a[1]*b[2] - a[2]*b[1]
+
+@inline function fd_grad(u::AbstractArray{Float64,2}, I, inv_dV)
+    return @SVector[ u[(I .+ (1,0))...] - u[(I .+ (-1,0))...], 
+                     u[(I .+ (0,1))...] - u[(I .+ (0,-1))...]]  .* inv_dV
+end
+
+@inline function fd_grad(u::AbstractArray{Float64,3}, I, inv_dV)
+    return @SVector[ u[(I .+ (1,0,0))...] - u[(I .+ (-1,0,0))...], 
+                     u[(I .+ (0,1,0))...] - u[(I .+ (0,-1,0))...],
+                     u[(I .+ (0,0,1))...] - u[(I .+ (0,0,-1))...]]  .* inv_dV
+end
 
 function follow_source!(s, p, cache)
     inv_dV =  p.signals.grid ./ p.env.domain.size
@@ -46,26 +58,20 @@ function follow_source!(s, p, cache)
         I = indexat(s, p, cache, s.X[i], 1)  # only interior indices
 
         # get gradient
-        grad_u = @SVector[ s.u[(I .+ (1,0))...] - s.u[(I .+ (-1,0))...], 
-                         s.u[(I .+ (0,1))...] - s.u[(I .+ (0,-1))...]]  .* inv_dV
-        
-        grad_v = @SVector[ s.v[(I .+ (1,0))...] - s.v[(I .+ (-1,0))...], 
-                        s.v[(I .+ (0,1))...] - s.v[(I .+ (0,-1))...]]  .* inv_dV
-                     
+        grad_u = fd_grad(s.u, I, inv_dV)
+        # grad_v = fd_grad(s.v, I, inv_dV)
                         
-        grad = ct == 1 ? grad_u : grad_v
+        grad = grad_u
         grad_l = sqrt(sum( z->z^2, grad))
 
         if grad_l > 0.0
             grad_n = grad ./ grad_l
 
             angle_cos = dot(grad_n, s.P[i])
-            angle_sign = cross_2d(grad_n, s.P[i]) > 0 ? -1 : 1
-
-            P_tangent = @SVector[ -s.P[i][2], s.P[i][1] ]
+            P_tangent = normalize(grad_n - s.P[i] * angle_cos)
 
             # update polarity
-            s.P[i] += chemotaxis_strength * p.sim.dt * grad_l * (1 - angle_cos) * angle_sign * P_tangent
+            s.P[i] += chemotaxis_strength * p.sim.dt * grad_l * (1 - angle_cos) * P_tangent
             s.P[i] = normalize(s.P[i])
         end
     end

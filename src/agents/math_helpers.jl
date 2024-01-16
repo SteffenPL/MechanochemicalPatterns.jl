@@ -18,7 +18,7 @@ function random_direction(Dim)
 end
 
 
-@inline function safe_normalize(x, d)
+@inline function safe_normalize(x, d = x)
     n = norm(x)
     if n > 0
         return x/n
