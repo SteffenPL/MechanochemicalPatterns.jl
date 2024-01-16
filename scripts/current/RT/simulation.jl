@@ -37,7 +37,7 @@ function time_step!(s, p, cache)
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     # compute_gravity_forces!(s, p, cache)
-    add_center_gravity!(s, p, cache)
+    # add_center_gravity!(s, p, cache)
     compute_medium_forces!(s, p, cache)
 
     # add noise 

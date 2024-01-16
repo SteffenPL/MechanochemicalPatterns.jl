@@ -4,7 +4,7 @@
     domain = { center = [0.0, 0], size = [500.0, 500.0] }   # μm
     # gravity = -0.01  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
     dim = "julia: Val(2)"
-    name = "new day (with chemo)"
+    name = "new day"
 
 [plot]
     alpha_soft = 0.1
@@ -25,7 +25,7 @@
 
     [signals.types.u]
         D = 12.0   # μm²/hr
-        decay = 0.5e-2
+        decay = 1e-2
         init = """julia: 
                         function (x, p)
                             std = 50.0
@@ -64,7 +64,7 @@
 
     init_pos = {uniform = "domain"}
 
-    CIL = 0.01
+    CIL = 0.5
 
     medium_active = false
     medium_repulsion = 0.0 # μm/hr
@@ -75,29 +75,29 @@
         ID = 2
         N = 1000
     
-        new_adh_rate = 0.0  # 1/hr
+        new_adh_rate = 3.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
-        adhesion_stiffness = 0.1
+        adhesion_stiffness = 0.4
         
 
         signal_emission = 3e1
-        chemotaxis_strength = 1e4
+        chemotaxis_strength = 5e2
         # init_pos = {normal = {mean = [0.0,0.0], std = [300.0, 300.0]}}
 
     [cells.types.proximal]
         ID = 1
         N = 1000
         
-        new_adh_rate = 0.0  # 1/hr
+        new_adh_rate = 1.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
-        adhesion_stiffness = 0.1
+        adhesion_stiffness = 0.2
 
         signal_emission = 0e1
-        chemotaxis_strength = 0e2
+        chemotaxis_strength = 5e2
 
         # init_pos = {normal = {mean = [-20.0,0.0], std = [80.0, 80.0]}}
 
     [cells.interaction]
-        new_adh_rate = 0.0  # 1/hr
+        new_adh_rate = 1.0  # 1/hr
         break_adh_rate = 2.0  # hr
-        adhesion_stiffness = 0.1
+        adhesion_stiffness = 0.2

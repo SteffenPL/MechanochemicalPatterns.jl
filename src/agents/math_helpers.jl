@@ -6,7 +6,7 @@ function dist²(a,b)  # backup for non static vectors
     return d
 end
 
-dist²(a::SVector,b::SVector) = sum(x -> x^2, a-b)
+dist²(a::SVector,b::SVector) = sum(x -> x^2, a.-b)
 dist(a,b) = sqrt(dist²(a,b))
 
 dist²(a::SVector) = sum(x -> x^2, a)

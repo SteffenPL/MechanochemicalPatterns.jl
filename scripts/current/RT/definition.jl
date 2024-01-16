@@ -55,7 +55,6 @@ end
     const new_adh_rate::Vector{Float64} = Float64[]
     const break_adh_rate::Vector{Float64} = Float64[]
     const run_time::Vector{Float64} = Float64[]
-    const lifespan::Vector{Float64} = Float64[]
 
     # neighbour avg directions 
     const neighbour_avg::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
@@ -78,7 +77,7 @@ Base.show(io::IO, c::Cache) = @printf io "Cache(%d cells)" c.N
 
 function init_state(p)
     N = sum(ct.N for ct in p.cells.types)
-    cell_type = [ k for (k, ct) in enumerate(p.cells.types) for i in 1:ct.N ]
+    cell_type = [k for (k, ct) in enumerate(p.cells.types) for i in 1:ct.N]
     shuffle!(cell_type)
 
     # initial cell positions

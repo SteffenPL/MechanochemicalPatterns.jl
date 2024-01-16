@@ -25,7 +25,7 @@ function init_plot(s, p, cache;
     transparent_colors = transparency ? (c -> (c,alpha)).(colors) : colors 
     bond_color = transparency ? (bond_color, 0.3) : bond_color
 
-    fig = Figure(resolution = (show_concentration ? 1500 : 1024 , 768))
+    fig = Figure(resolution = (show_concentration && show_v ? 1500 : (show_concentration ? 1024 : 768) , 768))
 
     state_obs = Observable(s)
 
@@ -244,7 +244,7 @@ function init_dens_plot(s, p, cache;
     transparency = transparency || dim(p) == 2
 
     transparent_colors = transparency ? (c -> (c,alpha)).(colors) : colors 
-    bond_color = transparency ? (bond_color, 0.5) : bond_color
+    bond_color = transparency ? (bond_color, 0.3) : bond_color
 
     fig = Figure(resolution = (show_concentration ? 1500 : 1024 , 768))
 
@@ -370,9 +370,11 @@ function init_dens_plot(s, p, cache;
 
             xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
             ax2 = Axis(fig[1,2], xlabel = "x", ylabel = "y", title = "u")
-            
+            u_max = @lift (0.0, 0.01 + maximum($state_obs.u))
+
+
             ax2.aspect = DataAspect()
-            heatmap!(ax2, xs, ys, u_node, colorrange = (0,1.5), colormap = :thermal, interpolate = true)
+            heatmap!(ax2, xs, ys, u_node, colorrange = u_max, colormap = :thermal, interpolate = true)
 
 
             if n_peaks > 0

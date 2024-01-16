@@ -36,15 +36,57 @@ function atboundary(u, I)
     return any( (i == 1 || i == size(u,k)) for (k, i) in enumerate(I))
 end
 
-function filteredpeaks(s, p, k)
-    peaks = Images.findlocalmaxima(s.u)
-    filter!( pk -> !atboundary(s.u, pk.I), peaks)
 
+function filteredpeaks(s, scale, k, scalemin = 0.1, varmin = 0.8)
+    p = (; env = (;domain = (;min = @SVector[0.0, 0.0], size = SVector{2,Float64}(scale .* size(s.u)))), signals = (;grid = SVector{2,Float64}(size(s.u))))
+    return filteredpeaks(s, p, k, scalemin, varmin)
+end
+
+function filteredpeaks(s, p::NamedTuple, k, scalemin = 0.1, varmin = 0.8)
+    data = s.u
+    peaks = Images.findlocalmaxima(data)
+    filter!(pk -> !atboundary(data, pk.I), peaks)
+
+    scale = maximum(data)
     u_values = s.u[peaks]
     peaks = peaks[sortperm(u_values, rev=true)]
     peaks = first(peaks, k)
 
-    return [ (I = pk.I, pos = indexpos(s,p, pk.I), u = s.u[pk]) for pk in peaks]
+
+    unique_pks = eltype(peaks)[]
+    for pk in peaks
+        new_pk = true
+        
+        # scale test 
+        u_val = data[pk.I...]
+        if u_val < scalemin * scale
+            continue
+        end
+
+        # line test
+        for qk in unique_pks
+            all_above = true
+            for x in LinRange(0,1,5)
+                Ix = round.(Int64, (1-x) .* pk.I .+ x .* qk.I)
+                Ix = mod.(Ix, (axes(data,1), axes(data,2)))
+                if data[Ix...] < varmin * u_val
+                    all_above = false
+                    break
+                end
+            end
+            if all_above
+                new_pk = false
+                break
+            end
+        end
+
+        if new_pk
+            push!(unique_pks, pk)
+        end
+    end
+
+
+    return [ (I = pk.I, pos = indexpos(s,p, pk.I), u = s.u[pk]) for pk in unique_pks]
 end
 
 # filteredpeaks(states[end], p, 10)

@@ -20,8 +20,10 @@ fig, s_obs = init_plot(states[end], p, cache; show_polarities = true, show_conce
 
 # find main peak
 s_end = states[end]
-main_peak = filteredpeaks(s_end, p, 10)[4]
+main_peak = filteredpeaks(, p, 20)
 display(fig)
+
+mkpath("scripts/current/RT/outputs/growth/$(id)")
 
 for ct in 1:2
     ct_name = ["proximal", "distal"][ct]
@@ -29,9 +31,9 @@ for ct in 1:2
 
     x = s_end.X[s_end.cell_type .== ct]
     dom = p.env.domain
-    xs = LinRange(dom.min[1], dom.max[1], p.signals.grid[1])
-    ys = LinRange(dom.min[2], dom.max[2], p.signals.grid[2])
-    kd = kde( (getindex.(x, 1), getindex.(x, 2)); boundary = ((dom.min[1],dom.max[1]),(dom.min[2],dom.max[2])), npoints=tuple(p.signals.grid...))
+    xs = LinRange(dom.min[1], dom.max[1], p_.signals.grid[1])
+    ys = LinRange(dom.min[2], dom.max[2], p_.signals.grid[2])
+    kd = kde( (getindex.(x, 1), getindex.(x, 2)); boundary = ((dom.min[1],dom.max[1]),(dom.min[2],dom.max[2])), npoints=tuple(p_.signals.grid...))
 
     # compute number of cells within radius 
     R = 100.0
@@ -39,10 +41,10 @@ for ct in 1:2
     Axis(fig[1,1], xlabel = "x", ylabel = "y")
     current_axis().aspect = DataAspect()
     heatmap!(xs, ys, kd.density, colormap = cgrad([:black,ct_col]), colorrange = (0,5e-6))
-    main_peak = filteredpeaks((;u=kd.density), p, 10)[1]
+    main_peak = filteredpeaks((;u=kd.density), p_, 10)[1]
     scatter!(main_peak.pos, color = :red, markersize = 10.0)
     arc!(main_peak.pos, R, 0.0, 2π, color = :red)
-    save("scripts/current/RT/outputs/state_$(ct_name)_$(id)_R=$(R).png", fig)
+    save("scripts/current/RT/outputs/growth/$(id)/state_$(ct_name)_$(id)_R=$(R).png", fig)
     fig 
 
 
@@ -56,9 +58,9 @@ for ct in 1:2
 
     with_theme(Theme()) do
         fig2 = Figure()
-        Axis(fig2[1,1], xlabel = "time", ylabel = "cell count")
+        Axis(fig2[1,1], xlabel = "time", ylabel = "cell count", title = ct_name)
         lines!(ts, cell_count)
-        save("scripts/current/RT/outputs/growth_$(ct_name)_$(id)_R=$(R).png", fig2)
+        save("scripts/current/RT/outputs/growth/$(id)/growth_$(ct_name)_$(id)_R=$(R).png", fig2)
         display(fig2)
     end
 end

@@ -36,7 +36,7 @@ end
 
 begin 
     last_seed = rand(rng_seeds, 1:1000)
-    Random.seed!(last_seed)
+    Random.seed!(342)
 
     printstyled("Setting seed to $last_seed\n", color = :green)
 
@@ -82,10 +82,33 @@ function save_video(states, p, s_obs, fig, seed, folder = "./scripts/current/RT/
     end
 end
 
-save_video(states, p, s_obs, last_seed)
+save_video(states, p, s_obs, fig, last_seed)
 
 function doit(seed = missing)
     states, p, cache, s_obs, fig, seed = run_sim(;seed, slider = false)
     save_video(states, p, s_obs, fig, seed)
     return states, p, cache, s_obs, fig, seed
 end
+
+
+
+# p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
+# s = init_state(p)
+# cache = init_cache(p, s)
+
+# fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
+# display(fig)
+# s.X[1] = @SVector[5.0 - 0, 0.0]
+# s.X[2] = @SVector[-5.0 - 0, 0.0]
+# project_onto_domain!(s, p, cache)
+
+# s_obs[] = s
+
+# reset_forces!(s, p, cache)
+# updatetable!(cache.st, s.X)
+# compute_interaction_forces!(s, p, cache)
+
+# dist(s.X[1], s.X[2])
+# dist(p, s.X[1], s.X[2])
+
+# # cache.F == [-60.0, 60.0]
