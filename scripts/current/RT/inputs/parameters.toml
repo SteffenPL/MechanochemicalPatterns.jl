@@ -23,12 +23,12 @@
     abstol = 1e-6
 
     [signals.types.u]
-        D = 10.0   # μm²/hr
-        decay = 1e-7
+        D = 0.0   # μm²/hr
+        decay = 0.0
         init = """julia: 
                         function (x, p)
                             std = 25.0
-                            return 0.0 * exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
+                            return 10.0 * exp( -dist²(x, p.env.domain.center) / (2 * std^2) )
                         end
                         """
 
@@ -93,7 +93,7 @@
         new_adh_rate = 2.0  # 1/hr
         break_adh_rate = 3.0  # 1/hr
 
-        signal_emission = 1e4 # [PFG] / hr
+        signal_emission = 0 # 1e4 # [PFG] / hr
         chemotaxis_strength = 1e3
 
         [cells.types.distal.init_pos.custom_distr]

@@ -1,6 +1,6 @@
 [env]
     damping = 1.0             # pg/hr (makes mass non-dimensional)
-    periodic = true
+    periodic = false
     domain = { center = [0.0, 0], size = [500.0, 500.0] }   # μm
     # gravity = -0.01  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
     dim = "julia: Val(2)"
@@ -24,12 +24,12 @@
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 12.0   # μm²/hr
-        decay = 0.5e-2
+        D = 0.0   # μm²/hr
+        decay = 0.0e-2
         init = """julia: 
                         function (x, p)
-                            std = 50.0
-                            return 0 * exp( -dist²(p, @SVector[x[1],x[2]], @SVector([200.0,200.0])) / (2 * std^2) )
+                            std = 100.0
+                            return 2 * exp( -dist²(p, @SVector[x[1],x[2]], @SVector([200.0,200.0])) / (2 * std^2) )
                         end
                         """
 
@@ -80,7 +80,7 @@
         adhesion_stiffness = 1.2
         adhesion_bias = 1.0        
 
-        signal_emission = 3e1
+        signal_emission = 0.0 #3e1
         chemotaxis_strength = 1e3
         # init_pos = {normal = {mean = [0.0,0.0], std = [300.0, 300.0]}}
 
