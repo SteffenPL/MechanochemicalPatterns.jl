@@ -78,7 +78,7 @@
         new_adh_rate = 3.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 1.2
-        adhesion_bias = 1.0        
+        
 
         signal_emission = 3e1
         chemotaxis_strength = 1e3
@@ -91,7 +91,6 @@
         new_adh_rate = 2.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.8
-        adhesion_bias = -1.0
 
         signal_emission = 0e1
         chemotaxis_strength = 1e2

@@ -79,19 +79,12 @@ function apply_interaction_kernel!(s, p, cache, fnc, R)
     R_int = R
     for i in eachindex(s.X)
         Xi = s.X[i]
-        if abs(Xi[1] - p.env.domain.min[1]) < R_int || abs(Xi[1] - p.env.domain.max[1]) < R_int || abs(Xi[2] - p.env.domain.min[2]) < R_int || abs(Xi[2] - p.env.domain.max[2]) < R_int
-            for j in i+1:length(s.X)
-                Xj = s.X[j]
+    
+        for (j, o) in neighbours_bc(p, cache.st, Xi, R)
+            if i < j 
+                Xj = s.X[j] - o
                 dij = dist(p, Xi, Xj)
                 fnc(s, p, cache, i, j, Xi, Xj, dij)
-            end
-        else
-            for (j, o) in neighbours_bc(p, cache.st, Xi, R)
-                if i < j 
-                    Xj = s.X[j] + o
-                    dij = dist(p, Xi, Xj)
-                    fnc(s, p, cache, i, j, Xi, Xj, dij)
-                end
             end
         end
     end
@@ -160,24 +153,12 @@ function compute_interaction_forces!(s, p, cache)
 
     for i in eachindex(s.X)
         Xi = s.X[i]
-        if abs(Xi[1] - p.env.domain.min[1]) < R_int || abs(Xi[1] - p.env.domain.max[1]) < R_int || abs(Xi[2] - p.env.domain.min[2]) < R_int || abs(Xi[2] - p.env.domain.max[2]) < R_int
-            for j in i+1:length(s.X)
-                if i < j 
-                    Xj = s.X[j]
-                    dij² = dist²(p, Xi, Xj)
-                    if 0.0 < dij² < R_int^2
-                        interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
-                    end
-                end
-            end
-        else
-            for (j, o) in neighbours_bc(p, cache.st, Xi, R_int)  # 1:i-1 
-                if i < j 
-                    Xj = s.X[j] + o
-                    dij² = dist²(p, Xi, Xj)
-                    if 0.0 < dij² < R_int^2
-                        interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
-                    end
+        for (j, o) in neighbours_bc(p, cache.st, Xi, R_int)  # 1:i-1 
+            if i < j
+                Xj = s.X[j] - o
+                dij² = dist²(p, Xi, Xj)
+                if 0.0 < dij² < R_int^2
+                    interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, sqrt(dij²))
                 end
             end
         end
@@ -200,7 +181,7 @@ function compute_neighbourhood!(s, p, cache)
         Ri = cache.R_hard[i]
         for (j, o) in neighbours_bc(p, cache.st, s.X[i], R_int) # 1:i-1
             if i < j 
-                Xij = s.X[j] + o - s.X[i]
+                Xij = s.X[j] - o - s.X[i]
                 dij = sqrt(sum(z -> z^2, Xij))
                 Rij = Ri + cache.R_hard[j]
                 if 0 < dij < 2*R_int
@@ -234,32 +215,17 @@ function project_non_overlap!(s, p, cache)
     Rij = 2*p.cells.R_hard
     for i in eachindex(s.X)
         Xi = s.X[i]
-        if abs(Xi[1] - p.env.domain.min[1]) < Rij || abs(Xi[1] - p.env.domain.max[1]) < Rij || abs(Xi[2] - p.env.domain.min[2]) < Rij || abs(Xi[2] - p.env.domain.max[2]) < Rij
-            for j in i+1:length(s.X)
-                if i < j 
-                    Xi = s.X[i]
-                    Xj = s.X[j]
-                    dij² = dist²(p, Xi, Xj)
-                    if 0.0 < dij² < Rij^2
-                        dij = sqrt(dij²)
-                        Xij = Xj - Xi
-                        s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
-                        s.X[j] += 0.5 * (Rij - dij) / dij * Xij
-                    end
-                end
-            end
-        else
-            for (j, o) in neighbours_bc(p, cache.st, s.X[i], Rij) # 1:i-1
-                if i < j 
-                    Xi = s.X[i]
-                    Xj = s.X[j] + o
-                    dij² = dist²(p, Xi, Xj)
-                    if 0.0 < dij² < Rij^2
-                        dij = sqrt(dij²)
-                        Xij = Xj - Xi
-                        s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
-                        s.X[j] += 0.5 * (Rij - dij) / dij * Xij
-                    end
+    
+        for (j, o) in neighbours_bc(p, cache.st, s.X[i], Rij) # 1:i-1
+            if i < j 
+                Xi = s.X[i]
+                Xj = s.X[j] - o
+                dij² = dist²(p, Xi, Xj)
+                if 0.0 < dij² < Rij^2
+                    dij = sqrt(dij²)
+                    Xij = Xj - Xi
+                    s.X[i] -= 0.5 * (Rij - dij) / dij * Xij
+                    s.X[j] += 0.5 * (Rij - dij) / dij * Xij
                 end
             end
         end

@@ -95,13 +95,16 @@ end
 
 
 # p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
+# p = @set p.cells.types.distal.N = 2 
+# p = @set p.cells.types.proximal.N = 0
 # s = init_state(p)
+
 # cache = init_cache(p, s)
 
 # fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
 # display(fig)
-# s.X[1] = @SVector[5.0 - 0, 0.0]
-# s.X[2] = @SVector[-5.0 - 0, 0.0]
+# s.X[2] = @SVector[250 - 1.0, 0.0]
+# s.X[1] = @SVector[-250 + 1.0 - 0, 0.0]
 # project_onto_domain!(s, p, cache)
 
 # s_obs[] = s
@@ -113,4 +116,4 @@ end
 # dist(s.X[1], s.X[2])
 # dist(p, s.X[1], s.X[2])
 
-# # cache.F == [-60.0, 60.0]
+# cache.F

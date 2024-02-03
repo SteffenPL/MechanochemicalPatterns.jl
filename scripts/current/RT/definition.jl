@@ -157,8 +157,10 @@ end
 
 function init_cache(p, s)
     cd = p.sim.collision_detection
-    margin = (0.5 + cd.margin)
     dom = p.env.domain
+
+    margin = (p.env.periodic ? 0.0 : cd.margin)
+
     sht = BoundedHashTable(length(s.X), cd.boxsize, 
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
