@@ -21,8 +21,10 @@ end
 function indexat(s, p, cache, X::SVector{3,Float64}, offset = 0)
     rel = (X - p.env.domain.min) ./ p.env.domain.size 
     I = ceil.(Int64, rel .* p.signals.grid) 
-    #I = clamp.(I, one.(p.signals.grid) .+ offset, p.signals.grid .- offset)
-    return (mod(I[1], 1:p.signals.grid[1]), mod(I[2], 1:p.signals.grid[2]), mod(I[3], 1:p.signals.grid[3]))
+    if !p.env.periodic
+        I = clamp.(I, one.(p.signals.grid) .+ offset, p.signals.grid .- offset)
+    end
+    return mod.(I, axes(s.u))
 end
 
 function indexpos(s, p, I)
@@ -47,7 +49,7 @@ end
 cross_2d(a, b) = a[1]*b[2] - a[2]*b[1]
 
 @inline function fd_grad(u::AbstractArray{Float64,2}, I, inv_dV, p)
-    fix(i) = (mod(i[1], axes(u,1)), mod(i[2], axes(u,2)))
+    fix(i) = p.env.periodic ? mod.(i, axes(u)) : clamp.(i, axes(u))
     
     return @SVector[ u[fix(I .+ (1,0))...] - u[fix(I .+ (-1,0))...], 
                      u[fix(I .+ (0,1))...] - u[fix(I .+ (0,-1))...]]  .* inv_dV  
@@ -55,7 +57,7 @@ cross_2d(a, b) = a[1]*b[2] - a[2]*b[1]
 end
 
 @inline function fd_grad(u::AbstractArray{Float64,3}, I, inv_dV, p)
-    fix(i) = (mod(i[1], axes(u,1)), mod(i[2], axes(u,2)), mod(i[3], axes(u,3)))
+    fix(i) = p.env.periodic ? mod.(i, axes(u)) : clamp.(i, axes(u))
 
     return @SVector[ u[fix(I .+ (1,0,0))...] - u[fix(I .+ (-1,0,0))...], 
                      u[fix(I .+ (0,1,0))...] - u[fix(I .+ (0,-1,0))...],
@@ -69,13 +71,7 @@ function follow_source!(s, p, cache)
         chemotaxis_strength = get_param(p, ct, :chemotaxis_strength, 0.0)
 
         I = indexat(s, p, cache, s.X[i], 0)
-        if !p.env.periodic
-            @error "Implement"
-        end
-
-        # get gradient
                       
-        
         if !hasproperty(p.signals.types, :v) || ct == 2 
             grad = fd_grad(s.u, I, inv_dV, p)
         else
