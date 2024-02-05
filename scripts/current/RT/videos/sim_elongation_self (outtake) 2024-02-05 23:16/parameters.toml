@@ -11,7 +11,7 @@
 
 [sim]
     t_end   = "julia: 32.0"  # hr
-    dt      = 0.0025  # hr
+    dt      = 0.005  # hr
     saveat  = 0.1   # hr
 
     [sim.collision_detection]
@@ -20,7 +20,7 @@
 
 [signals]
     grid = [100, 100]
-    dt = 0.005  # hr
+    dt = 0.5  # hr
     saveat = 0.1 # hr
 
     [signals.types.u]
@@ -81,7 +81,7 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
         adhesion_stiffness = 0.0
-        attraction_stiffness = 0.3
+        attraction_stiffness = 1.1
 
         biased_adhesion = 250.0
 
@@ -96,7 +96,7 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.6
-        attraction_stiffness = 1.0
+        attraction_stiffness = 0.8
 
         biased_adhesion = 0.0
 

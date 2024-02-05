@@ -4,14 +4,14 @@
     domain = { center = [0.0, 0], size = [800.0, 800.0] }   # μm
     gravity = -0.0  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
     dim = "julia: Val(2)"
-    name = "elongation_self"
+    name = "pure adhesion"
 
 [plot]
     alpha_soft = 0.1
 
 [sim]
     t_end   = "julia: 32.0"  # hr
-    dt      = 0.0025  # hr
+    dt      = 0.005  # hr
     saveat  = 0.1   # hr
 
     [sim.collision_detection]
@@ -20,17 +20,17 @@
 
 [signals]
     grid = [100, 100]
-    dt = 0.005  # hr
+    dt = 0.5  # hr
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 5e2   # μm²/hr
-        decay = 1e-2
+        D = 0e2   # μm²/hr
+        decay = 0e-2
         init = """julia: 
                         function (x, p)
                             std = 200.0
                             slope = 1e-3
-                            return 0.0
+                            return  x[1] * slope
                         end
                         """
     ## x[1] * slope
@@ -81,11 +81,11 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
         adhesion_stiffness = 0.0
-        attraction_stiffness = 0.3
+        attraction_stiffness = 1.1
 
         biased_adhesion = 250.0
 
-        signal_emission = 2e1 #3e1
+        signal_emission = 0e1 #3e1
         chemotaxis_strength = 0e3
         init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
 
@@ -96,7 +96,7 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.6
-        attraction_stiffness = 1.0
+        attraction_stiffness = 0.8
 
         biased_adhesion = 0.0
 

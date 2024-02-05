@@ -27,6 +27,7 @@ function time_step!(s, p, cache)
     if hasproperty(p, :signals)
         add_source!(s, p, cache)
         ode_time_step!(s, p, cache)
+        update_gradients!(s, p, cache)
         follow_source!(s, p, cache)
     end
 
@@ -37,7 +38,7 @@ function time_step!(s, p, cache)
     compute_adhesive_forces!(s, p, cache)
     compute_interaction_forces!(s, p, cache)
     # compute_gravity_forces!(s, p, cache)
-    # add_center_gravity!(s, p, cache)
+    add_center_gravity!(s, p, cache)
     compute_medium_forces!(s, p, cache)
 
     # add noise 

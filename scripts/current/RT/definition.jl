@@ -41,6 +41,7 @@ end
     # forces 
     const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
     const dX::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
+    const grad::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
 
     # parameters 
     N::Int = 0
@@ -52,6 +53,7 @@ end
     const repulsion_stiffness::Vector{Float64} = Float64[]
     const adhesion_stiffness::Vector{Float64} = Float64[]
     const attraction_stiffness::Vector{Float64} = Float64[]
+    const biased_adhesion::Vector{Float64} = Float64[]
     const new_adh_rate::Vector{Float64} = Float64[]
     const break_adh_rate::Vector{Float64} = Float64[]
     const run_time::Vector{Float64} = Float64[]
@@ -150,6 +152,7 @@ function update_cache!(s, p, cache)
             update_p(:attraction_stiffness)
             update_p(:new_adh_rate)
             update_p(:break_adh_rate)
+            update_p(:biased_adhesion)
         end
         cache.outdated = false
     end
@@ -223,7 +226,7 @@ function init_cache(p, s)
         ode_integrator = nothing
     end
 
-    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], dX = svec(p)[], neighbour_avg = svec(p)[])
+    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], dX = svec(p)[], grad = svec(p)[], neighbour_avg = svec(p)[])
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
 

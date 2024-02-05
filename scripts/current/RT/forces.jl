@@ -110,9 +110,20 @@ function compute_adhesive_forces!(s, p, cache)
     for e in edges(bonds)
         i, j = src(e), dst(e)
         Xij = wrap(p, s.X[j] - s.X[i])
-        k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-        cache.F[i] += k * Xij
-        cache.F[j] -= k * Xij
+        l = dist(p, s.X[i], s.X[j])
+        # k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
+        if l > 0
+            f1 = dot(cache.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
+            f2 = dot(cache.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
+
+            f1  = clamp(1 + f1, 0.0, 2.0)
+            f2  = clamp(1 + f2, 0.0, 2.0)
+            factor = f1*f2
+            
+            k = factor * get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
+            cache.F[i] += k * Xij
+            cache.F[j] -= k * Xij
+        end
     end
 end
 
@@ -136,7 +147,15 @@ function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.R_attract[i] + cache.R_attract[j] 
     if 0.0 < dij < Rij
         Xji = wrap(p, s.X[i] - s.X[j])
+
+        f1 = dot(cache.grad[i], -Xji) / dij * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
+        f2 = dot(cache.grad[j], Xji) / dij * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
+        f1  = clamp(1 + f1, 0.0, 2.0)
+        f2  = clamp(1 + f2, 0.0, 2.0)
+        factor = f1*f2
+
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
+        k *= factor
         cache.F[i] -= (Rij - dij) * k / dij * Xji
         cache.F[j] += (Rij - dij) * k / dij * Xji
     end
@@ -145,7 +164,7 @@ end
 
 function interaction_force_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    #attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
+    attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
 end
 
 function compute_interaction_forces!(s, p, cache)
@@ -166,7 +185,7 @@ function compute_interaction_forces!(s, p, cache)
 end
 
 function compute_neighbourhood!(s, p, cache)
-    R_int = p.cells.R_interact
+    R_int = 2*p.cells.R_interact
     cache.neighbour_count .= 0
 
     for i in eachindex(cache.neighbour_avg)
@@ -207,7 +226,8 @@ end
 
 function compute_medium_forces!(s, p, cache)
     for i in eachindex(s.X)
-        cache.F[i] += p.cells.medium_repulsion * cache.neighbour_avg[i]
+        nl = sqrt(sum(x->x^2, cache.neighbour_avg[i]))
+        cache.F[i] += p.cells.medium_repulsion * cache.neighbour_avg[i] * nl
     end
 end
 

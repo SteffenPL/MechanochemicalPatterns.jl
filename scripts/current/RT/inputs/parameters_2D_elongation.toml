@@ -2,16 +2,16 @@
     damping = 1.0             # pg/hr (makes mass non-dimensional)
     periodic = false
     domain = { center = [0.0, 0], size = [800.0, 800.0] }   # μm
-    gravity = -0.0  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
+    gravity = -0.05  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
     dim = "julia: Val(2)"
-    name = "elongation_self"
+    name = "pure adhesion"
 
 [plot]
     alpha_soft = 0.1
 
 [sim]
     t_end   = "julia: 32.0"  # hr
-    dt      = 0.0025  # hr
+    dt      = 0.005  # hr
     saveat  = 0.1   # hr
 
     [sim.collision_detection]
@@ -20,20 +20,19 @@
 
 [signals]
     grid = [100, 100]
-    dt = 0.005  # hr
+    dt = 0.5  # hr
     saveat = 0.1 # hr
 
     [signals.types.u]
-        D = 5e2   # μm²/hr
-        decay = 1e-2
+        D = 0.0   # μm²/hr
+        decay = 0.0e-2
         init = """julia: 
                         function (x, p)
-                            std = 200.0
+                            std = 100.0
                             slope = 1e-3
-                            return 0.0
+                            return x[1] * slope
                         end
                         """
-    ## x[1] * slope
     ## 2 * exp( -dist²(p, @SVector[x[1],x[2]], @SVector([200.0,200.0])) / (2 * std^2) )
 [mods]
     # adhesion_stiffness = {speed = [0.01, 0.01], range = [0.1, 0.5], start = 20}
@@ -49,7 +48,7 @@
     R_soft = 15.0        # μm
     R_hard = 2.0         # μm 
     R_adh = 14.0         # μm
-    R_attract = 18.0     # μm
+    R_attract = 17.0     # μm
     R_interact = 15.0    # μm (maximal interaction range)
     lifespan = "julia: NaN64" # hr
     repulsion_stiffness = 1.0 # 8.0
@@ -69,47 +68,47 @@
 
     CIL = 0.1
 
-    medium_active = true
-    medium_repulsion = 50.0 # μm/hr
-    medium_alpha = 0.0      # n.d.
-    medium_slowdown = 0.5   # n.d.
+    medium_active = false
+    medium_repulsion = 0.0 # μm/hr
+    medium_alpha = 2.0      # n.d.
+    medium_slowdown = 1.0   # n.d.
 
     [cells.types.distal]
         ID = 2
-        N = 800
+        N = 500
     
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
         adhesion_stiffness = 0.0
-        attraction_stiffness = 0.3
+        attraction_stiffness = 1.3
 
-        biased_adhesion = 250.0
+        biased_adhesion = 9e4
 
-        signal_emission = 2e1 #3e1
+        signal_emission = 0.0 #3e1
         chemotaxis_strength = 0e3
-        init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
+        init_pos = {normal = {mean = [0.0,0.0], std = [80.0, 80.0]}}
 
     [cells.types.proximal]
         ID = 1
-        N = 1200
+        N = 0
         
-        new_adh_rate = 0.0  # 1/hr
+        new_adh_rate = 2.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.6
-        attraction_stiffness = 1.0
+        adhesion_bias = -1.0
+        attraction_stiffness = 0.0
 
         biased_adhesion = 0.0
 
         signal_emission = 0e1
         chemotaxis_strength = 0e1
 
-        init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
         # init_pos = {normal = {mean = [-20.0,0.0], std = [100.0, 100.0]}}
 
     [cells.interaction]
-        new_adh_rate = 0.0  # 1/hr
+        new_adh_rate = 2.0  # 1/hr
         break_adh_rate = 2.0  # hr
         adhesion_stiffness = 0.3
-        attraction_stiffness = 0.8
+        attraction_stiffness = 0.0
 
         biased_adhesion = 0.0

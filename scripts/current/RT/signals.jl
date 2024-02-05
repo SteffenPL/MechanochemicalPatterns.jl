@@ -64,19 +64,25 @@ end
                      u[fix(I .+ (0,0,1))...] - u[fix(I .+ (0,0,-1))...]]  .* inv_dV
 end
 
-function follow_source!(s, p, cache)
+function update_gradients!(s, p, cache)
     inv_dV =  p.signals.grid ./ p.env.domain.size
     for i in eachindex(s.X)
         ct = s.cell_type[i]
-        chemotaxis_strength = get_param(p, ct, :chemotaxis_strength, 0.0)
 
-        I = indexat(s, p, cache, s.X[i], 0)
-                      
+        I = indexat(s, p, cache, s.X[i], 0)                      
         if !hasproperty(p.signals.types, :v) || ct == 2 
-            grad = fd_grad(s.u, I, inv_dV, p)
+            cache.grad[i] = fd_grad(s.u, I, inv_dV, p)
         else
-            grad = fd_grad(s.v, I, inv_dV, p)
+            cache.grad[i] = grad = fd_grad(s.v, I, inv_dV, p)
         end
+    end
+end
+
+function follow_source!(s, p, cache)
+    for i in eachindex(s.X)
+        ct = s.cell_type[i]
+        chemotaxis_strength = get_param(p, ct, :chemotaxis_strength, 0.0)
+        grad = cache.grad[i]
 
         grad_l = sqrt(sum( z->z^2, grad))
 
