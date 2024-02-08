@@ -3,10 +3,9 @@ using OrdinaryDiffEq.SciMLBase
 using ComponentArrays: ComponentArray
 
 function ode_time_step!(s, p, cache)
-    set_u!(cache.ode_integrator, ComponentArray( u = s.u, v = s.v) )
+    set_u!(cache.ode_integrator, s.U)
     step!(cache.ode_integrator, p.sim.dt)
-    s.u .= cache.ode_integrator.u.u 
-    s.v .= cache.ode_integrator.u.v
+    s.U .= cache.ode_integrator.u
     return nothing
 end
 
@@ -33,15 +32,15 @@ end
 
 function add_source!(s, p, cache)
     inv_dvol =  1.0 / prod(p.env.domain.size ./ p.signals.grid) 
+    n_signals = length(p.signals.types) 
     for i in eachindex(s.X)
         ct = s.cell_type[i]
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
         I = indexat(s, p, cache, s.X[i])
-        if !hasproperty(p.signals.types, :v) || ct == 2 
-            s.u[I...] += signal_emission * inv_dvol * p.sim.dt
-        else 
-            s.v[I...] += signal_emission * inv_dvol * p.sim.dt
+
+        for (k, sg) in enumerate(p.signals.types)            
+            s.U.x[k][I...] += get(signal_emission, k, 0.0) * inv_dvol * p.sim.dt
         end
     end
 end
@@ -67,14 +66,8 @@ end
 function update_gradients!(s, p, cache)
     inv_dV =  p.signals.grid ./ p.env.domain.size
     for i in eachindex(s.X)
-        ct = s.cell_type[i]
-
-        I = indexat(s, p, cache, s.X[i], 0)                      
-        if !hasproperty(p.signals.types, :v) || ct == 2 
-            cache.grad[i] = fd_grad(s.u, I, inv_dV, p)
-        else
-            cache.grad[i] = grad = fd_grad(s.v, I, inv_dV, p)
-        end
+        I = indexat(s, p, cache, s.X[i], 0)                   
+        cache.data.grad[i] = fd_grad(s.U.x[1], I, inv_dV, p)
     end
 end
 
@@ -82,7 +75,7 @@ function follow_source!(s, p, cache)
     for i in eachindex(s.X)
         ct = s.cell_type[i]
         chemotaxis_strength = get_param(p, ct, :chemotaxis_strength, 0.0)
-        grad = cache.grad[i]
+        grad = cache.data.grad[i]
 
         grad_l = sqrt(sum( z->z^2, grad))
 

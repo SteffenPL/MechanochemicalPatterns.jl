@@ -13,7 +13,7 @@ function time_step!(s, p, cache)
 
     # track velocity 
     for i in eachindex(s.X)
-        cache.dX[i] = s.X[i]
+        cache.data.dX[i] = s.X[i]
     end
 
     # cell events
@@ -47,7 +47,7 @@ function time_step!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
-        s.X[i] += cache.F[i] * p.sim.dt / p.env.damping
+        s.X[i] += cache.data.F[i] * p.sim.dt / p.env.damping
     end
 
     # deal with constraints
@@ -56,7 +56,7 @@ function time_step!(s, p, cache)
 
     # update velocity
     for i in eachindex(s.X)
-        cache.dX[i] = (wrap(p, s.X[i] - cache.dX[i])) / p.sim.dt
+        cache.data.dX[i] = (wrap(p, s.X[i] - cache.data.dX[i])) / p.sim.dt
     end
 
     # polarity dynamics

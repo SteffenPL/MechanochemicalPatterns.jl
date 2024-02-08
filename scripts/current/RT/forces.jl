@@ -1,27 +1,27 @@
 @inline function get_hetero_param(s, p, cache, i, j, sym)
     if s.cell_type[i] == s.cell_type[j]
-        return getproperty(cache, sym)[i]
+        return getproperty(cache.data, sym)[i]
     else
         return getproperty(p.cells.interaction, sym)
     end
 end
 
 function reset_forces!(s, p, cache)
-    for i in eachindex(cache.F)
-        cache.F[i] = zero(svec(p))
+    for i in eachindex(cache.data.F)
+        cache.data.F[i] = zero(svec(p))
     end
 end
 
 function add_center_gravity!(s, p, cache)
     for i in eachindex(s.X)
-        cache.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
+        cache.data.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
     end
 end
 
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
     for i in eachindex(s.X)
-        cache.F[i] += randn(svec(p)) * p.cells.sigma * inv_sqrt_dt
+        cache.data.F[i] += randn(svec(p)) * p.cells.sigma * inv_sqrt_dt
     end
 end
 
@@ -32,18 +32,18 @@ function update_polarity!(s, p, cache)
         s.P[i] += randn(svec(p)) * p.cells.sigma_p * sqrt(p.sim.dt)
         s.P[i] = safe_normalize(s.P[i])
 
-        nF = norm(cache.dX[i])
-        if nF > 0 && cache.neighbour_count[i] < 5
-            dFP = dot(s.P[i], cache.dX[i])/nF
-            PT = nF * (1 - dFP) * safe_normalize(cache.dX[i] - dFP*nF * s.P[i])
+        nF = norm(cache.data.dX[i])
+        if nF > 0 && cache.data.neighbour_count[i] < 5
+            dFP = dot(s.P[i], cache.data.dX[i])/nF
+            PT = nF * (1 - dFP) * safe_normalize(cache.data.dX[i] - dFP*nF * s.P[i])
             s.P[i] += get_param(p, ct, :CIL, 0.0) * p.sim.dt * PT
             s.P[i] = safe_normalize(s.P[i])
         end
 
-        # if p.cells.medium_active && p.cells.plithotaxis > 0 && cache.neighbour_count[i] > 6 
-        #     nf = sqrt(sum(z -> z^2, cache.F[i]))
-        #     fp = @. cache.F[i]/nf - s.P[i]
-        #     align = dot(s.P[i], cache.F[i]) / nf
+        # if p.cells.medium_active && p.cells.plithotaxis > 0 && cache.data.neighbour_count[i] > 6 
+        #     nf = sqrt(sum(z -> z^2, cache.data.F[i]))
+        #     fp = @. cache.data.F[i]/nf - s.P[i]
+        #     align = dot(s.P[i], cache.data.F[i]) / nf
         #     fp = fp
         #     fp /= norm(fp)
 
@@ -56,17 +56,17 @@ end
 function add_self_prop!(s, p, cache)
     dt_factor = p.cells.v_self_prop * p.env.damping
     for i in eachindex(s.X)
-        if !p.cells.medium_active || cache.neighbour_count[i] > 6
-            cache.F[i] += s.P[i] * dt_factor
+        if !p.cells.medium_active || cache.data.neighbour_count[i] > 6
+            cache.data.F[i] += s.P[i] * dt_factor
         else 
-            cache.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
+            cache.data.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
         end
     end
 end
 
 function add_bonds!(s, p, cache, i, j, Xi, Xj, dij)
     if dij < 2*p.cells.R_adh && !has_edge(s.adh_bonds, i, j)
-        rate = s.cell_type[i] == s.cell_type[j] ? cache.new_adh_rate[i] : p.cells.interaction.new_adh_rate
+        rate = s.cell_type[i] == s.cell_type[j] ? cache.data.new_adh_rate[i] : p.cells.interaction.new_adh_rate
         if rand() < 1.0 - exp(-rate * p.sim.dt)
             add_edge!(s.adh_bonds, i, j, 0.0)
         end
@@ -113,51 +113,51 @@ function compute_adhesive_forces!(s, p, cache)
         l = dist(p, s.X[i], s.X[j])
         # k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
         if l > 0
-            f1 = dot(cache.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
-            f2 = dot(cache.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
+            f1 = dot(cache.data.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
+            f2 = dot(cache.data.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
 
             f1  = clamp(1 + f1, 0.0, 2.0)
             f2  = clamp(1 + f2, 0.0, 2.0)
             factor = f1*f2
             
             k = factor * get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-            cache.F[i] += k * Xij
-            cache.F[j] -= k * Xij
+            cache.data.F[i] += k * Xij
+            cache.data.F[j] -= k * Xij
         end
     end
 end
 
 function compute_gravity_forces!(s, p, cache)
     for i in eachindex(s.X)
-        cache.F[i] += p.env.gravity
+        cache.data.F[i] += p.env.gravity
     end
 end
 
 function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    Rij = cache.R_soft[i] + cache.R_soft[j] 
+    Rij = cache.data.R_soft[i] + cache.data.R_soft[j] 
     if 0.0 < dij < Rij 
-        k = cache.repulsion_stiffness[i] + cache.repulsion_stiffness[j]
+        k = cache.data.repulsion_stiffness[i] + cache.data.repulsion_stiffness[j]
         Xji = wrap(p, s.X[i] - s.X[j])
-        cache.F[i] += (Rij - dij) * k / dij * Xji
-        cache.F[j] -= (Rij - dij) * k / dij * Xji
+        cache.data.F[i] += (Rij - dij) * k / dij * Xji
+        cache.data.F[j] -= (Rij - dij) * k / dij * Xji
     end
 end
 
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
-    Rij = cache.R_attract[i] + cache.R_attract[j] 
+    Rij = cache.data.R_attract[i] + cache.data.R_attract[j] 
     if 0.0 < dij < Rij
         Xji = wrap(p, s.X[i] - s.X[j])
 
-        f1 = dot(cache.grad[i], -Xji) / dij * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
-        f2 = dot(cache.grad[j], Xji) / dij * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
+        f1 = dot(cache.data.grad[i], -Xji) / dij * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
+        f2 = dot(cache.data.grad[j], Xji) / dij * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
         f1  = clamp(1 + f1, 0.0, 2.0)
         f2  = clamp(1 + f2, 0.0, 2.0)
         factor = f1*f2
 
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
         k *= factor
-        cache.F[i] -= (Rij - dij) * k / dij * Xji
-        cache.F[j] += (Rij - dij) * k / dij * Xji
+        cache.data.F[i] -= (Rij - dij) * k / dij * Xji
+        cache.data.F[j] += (Rij - dij) * k / dij * Xji
     end
 end
 
@@ -186,10 +186,10 @@ end
 
 function compute_neighbourhood!(s, p, cache)
     R_int = 2*p.cells.R_interact
-    cache.neighbour_count .= 0
+    cache.data.neighbour_count .= 0
 
-    for i in eachindex(cache.neighbour_avg)
-        cache.neighbour_avg[i] = zero(svec(p))
+    for i in eachindex(cache.data.neighbour_avg)
+        cache.data.neighbour_avg[i] = zero(svec(p))
     end
 
     if !p.cells.medium_active 
@@ -197,28 +197,28 @@ function compute_neighbourhood!(s, p, cache)
     end
 
     for i in eachindex(s.X)
-        Ri = cache.R_hard[i]
+        Ri = cache.data.R_hard[i]
         for (j, o) in neighbours_bc(p, cache.st, s.X[i], R_int) # 1:i-1
             if i < j 
                 Xij = s.X[j] - o - s.X[i]
                 dij = sqrt(sum(z -> z^2, Xij))
-                Rij = Ri + cache.R_hard[j]
+                Rij = Ri + cache.data.R_hard[j]
                 if 0 < dij < 2*R_int
                     factor = Rij^p.cells.medium_alpha / dij^(1+p.cells.medium_alpha)
-                    cache.neighbour_avg[i] += Xij * factor
-                    cache.neighbour_avg[j] -= Xij * factor
+                    cache.data.neighbour_avg[i] += Xij * factor
+                    cache.data.neighbour_avg[j] -= Xij * factor
 
-                    cache.neighbour_count[i] += 1
-                    cache.neighbour_count[j] += 1
+                    cache.data.neighbour_count[i] += 1
+                    cache.data.neighbour_count[j] += 1
                 end
             end
         end
     end
 
     # normalize
-    for i in eachindex(cache.neighbour_avg)
-        nc = cache.neighbour_count[i]
-        cache.neighbour_avg[i] *= (nc > 0 ? 1/nc : 0.0)
+    for i in eachindex(cache.data.neighbour_avg)
+        nc = cache.data.neighbour_count[i]
+        cache.data.neighbour_avg[i] *= (nc > 0 ? 1/nc : 0.0)
     end
 
     return nothing
@@ -226,8 +226,8 @@ end
 
 function compute_medium_forces!(s, p, cache)
     for i in eachindex(s.X)
-        nl = sqrt(sum(x->x^2, cache.neighbour_avg[i]))
-        cache.F[i] += p.cells.medium_repulsion * cache.neighbour_avg[i] * nl
+        nl = sqrt(sum(x->x^2, cache.data.neighbour_avg[i]))
+        cache.data.F[i] += p.cells.medium_repulsion * cache.data.neighbour_avg[i] * nl
     end
 end
 

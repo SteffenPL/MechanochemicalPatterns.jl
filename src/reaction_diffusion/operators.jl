@@ -1,10 +1,11 @@
 
-function laplace!(du::AbstractArray{Float64,2}, u::AbstractArray{Float64,2}, D, dV)
+function laplace!(du::AbstractArray{Float64,2}, u::AbstractArray{Float64,2}, D, dV, factor = 1.0)
+    Df(i,j) = D * get(factor, (i,j), 1.0)
     cx(l) = clamp(l, axes(u,1))
     cy(l) = clamp(l, axes(u,2))
 
     @inbounds for i in axes(u,1), j in axes(u,2)
-        du[i,j] += D*(
+        du[i,j] += Df(i,j)*(
             (u[cx(i-1),j] + u[cx(i+1),j] - 2*u[i,j])/dV[1]^2 +
             (u[i,cy(j-1)] + u[i,cy(j+1)] - 2*u[i,j])/dV[2]^2 
         )

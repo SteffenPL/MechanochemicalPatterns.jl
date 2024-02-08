@@ -41,10 +41,12 @@ begin
     printstyled("Setting seed to $last_seed\n", color = :green)
 
     p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
+    #p = @set p.sim.t_end = 4.0
+    includet("inputs/model.jl")
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 1:3)
     display(fig)
     
     states = [deepcopy(s)]

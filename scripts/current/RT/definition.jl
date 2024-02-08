@@ -4,19 +4,19 @@
 const BDMGraph = BoundedDegreeMetaGraph
 const AdhesionGraph = BDMGraph{Int,Float64,Nothing}
 
+using RecursiveArrayTools
 import ComponentArrays 
 const CA = ComponentArrays
 
 # The state contains all data which is needed to produce the next 
 # time step (provided the parameters are known).
-@proto mutable struct State{Dim}
+@proto mutable struct State{Dim,ST}
     const X::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # position 
     const P::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # polarity
     const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
     const cell_age::Vector{Float64} = Float64[]
-    const u::Array{Float64,Dim} = zeros(0,0,0)
-    const v::Array{Float64,Dim} = zeros(0,0,0)
+    const U::ST = nothing
     t::Float64 = 0.0
 end
 
@@ -25,47 +25,48 @@ function partialcopy(s, lazy = false)
         X = copy(s.X), 
         P = copy(s.P), 
         adh_bonds = deepcopy(s.adh_bonds), 
-        cell_type = s.cell_type,  # contant cell types 
-        u = lazy ? s.u : copy(s.u), 
-        v = lazy ? s.v : copy(s.v), 
+        cell_type = s.cell_type,  # contant cell types...
+        U = lazy ? s.U : copy.(s.U), 
         t = s.t
         )
 end
 
+@proto struct CellCache{SVT, SVTD} 
+    F::SVT
+    dX::SVT
+    grads::SVTD
+    neighbour_avg::SVT
+    neighbour_count::Int
+
+    R_soft::Float64
+    R_hard::Float64
+    R_adh::Float64
+    R_attract::Float64
+    t_divide::Float64
+    repulsion_stiffness::Float64
+    adhesion_stiffness::Float64
+    attraction_stiffness::Float64
+    biased_adhesion::Float64
+    new_adh_rate::Float64
+    break_adh_rate::Float64
+    run_time::Float64
+end
+
+using StructArrays
+
 # Cache contains auxiliary data which is useful for the implementation, 
 # but actually reduandant if one knows the parameters and the state.
-@proto mutable struct Cache{Dim, ODEP, ODEI}
+@proto mutable struct Cache{Dim, ODEP, ODEI, ODEG, SA}
 
     outdated::Bool = true  # for internal use
-
-    # forces 
-    const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
-    const dX::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
-    const grad::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
-
-    # parameters 
     N::Int = 0
-    const R_soft::Vector{Float64} = Float64[]
-    const R_hard::Vector{Float64} = Float64[]
-    const R_adh::Vector{Float64} = Float64[]
-    const R_attract::Vector{Float64} = Float64[]
-    const t_divide::Vector{Float64} = Float64[]
-    const repulsion_stiffness::Vector{Float64} = Float64[]
-    const adhesion_stiffness::Vector{Float64} = Float64[]
-    const attraction_stiffness::Vector{Float64} = Float64[]
-    const biased_adhesion::Vector{Float64} = Float64[]
-    const new_adh_rate::Vector{Float64} = Float64[]
-    const break_adh_rate::Vector{Float64} = Float64[]
-    const run_time::Vector{Float64} = Float64[]
 
-    # neighbour avg directions 
-    const neighbour_avg::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]
-    const neighbour_count::Vector{Int} = Int[]
+    const data::SA
 
     # ODE problem for the signals
     const ode_prob::ODEP = nothing
     const ode_integrator::ODEI = nothing
-
+    const grid::ODEG = nothing
 
     # collision detection 
     const st::BoundedHashTable{Dim,Vector{Int64},Float64,Int64}
@@ -75,11 +76,33 @@ end
 Base.show(io::IO, s::State) = @printf io "State(%d cells @ t = %.2fh)" length(s.X) s.t
 Base.show(io::IO, c::Cache) = @printf io "Cache(%d cells)" c.N
 
-
+function CellDataType(p)
+    Dim = dim(p)
+    return @NamedTuple begin 
+        F::SVector{Dim,Float64}
+        dX::SVector{Dim,Float64}
+        grad::SVector{Dim,Float64}
+        neighbour_avg::SVector{Dim,Float64}
+        neighbour_count::Int
+        R_soft::Float64
+        R_hard::Float64
+        R_adh::Float64
+        R_attract::Float64
+        t_divide::Float64
+        repulsion_stiffness::Float64
+        adhesion_stiffness::Float64
+        attraction_stiffness::Float64
+        biased_adhesion::Float64
+        new_adh_rate::Float64
+        break_adh_rate::Float64
+        run_time::Float64
+    end
+end 
 
 function init_state(p)
     N = sum(ct.N for ct in p.cells.types)
-    cell_type = [k for (k, ct) in enumerate(p.cells.types) for i in 1:ct.N]
+
+    cell_type = reduce(vcat, fill(ct_index, ct.N) for (ct_index, ct) in enumerate(p.cells.types))
     shuffle!(cell_type)
 
     # initial cell positions
@@ -94,44 +117,34 @@ function init_state(p)
 
     # signals 
     if hasproperty(p, :signals)
-        if dim(p) == 3
-            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+        cts = p.signals.types
 
-            u = [Base.invokelatest(p.signals.types.u.init, (x,y,z), p) for x in xs, y in ys, z in zs]
-            v = if hasproperty(p.signals.types, :v)
-                [Base.invokelatest(p.signals.types.v.init, (x,y,z), p) for x in xs, y in ys, z in zs]
-            else
-                zeros(0,0,0)
-            end
-        elseif dim(p) == 2
-            xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
+        grid = Tuple(LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid))
+        n_signals = length(cts)
 
-            u = [Base.invokelatest(p.signals.types.u.init, (x,y), p) for x in xs, y in ys]
-            v = if hasproperty(p.signals.types, :v)
-                [Base.invokelatest(p.signals.types.v.init, (x,y), p) for x in xs, y in ys]
-            else
-                zeros(0,0)
+        U = map( i -> Array{Float64}(undef, p.signals.grid...), Tuple(1:n_signals))
+
+        for (k, u) in enumerate(U)
+            ct = cts[k]
+            for I in CartesianIndices(u)
+                pos = getindex.(grid, Tuple(I))
+                u[I] = eval_param(p, ct.init, pos)
             end
         end
     else
-        u = zeros(0,0)
-        v = similar(u)
+        U = Float64[]
     end
 
-    return State(; X, P, cell_type, cell_age, adh_bonds, u, v)
+    return State(; X, P, cell_type, cell_age, adh_bonds, U = ArrayPartition(U...), t = 0.0)
 end
 
 function resize_cache!(s, p, cache)
     if cache.N != length(s.X)
         cache.N = length(s.X)
-        for prop_name in propertynames(cache) 
-            prob = getproperty(cache, prop_name)
-            if prob isa Vector 
-                resize!(prob, cache.N)
-            end 
-        end 
 
+        resize!(cache.data, cache.N)
         resize!(cache.st, cache.N)
+
         cache.outdated = true
     end
 end
@@ -141,7 +154,7 @@ function update_cache!(s, p, cache)
         for i in eachindex(s.X)
             ct = s.cell_type[i]
             
-            update_p(sym) = getproperty(cache, sym)[i] = get_param(p, ct, sym)
+            update_p(sym) = getproperty(cache.data, sym)[i] = get_param(p, ct, sym)
 
             update_p(:R_soft)
             update_p(:R_hard)
@@ -168,54 +181,46 @@ function init_cache(p, s)
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
 
-    function rhs_periodic!(dz, z, p_ode, t)
-        p_ = p_ode.p
-        dz .= 0.0
+    # function rhs_periodic!(dz, z, p_ode, t)
+    #     p_ = p_ode.p
+    #     dz .= 0.0
 
-        if hasproperty(p_.signals.types, :u)
-            pu = p_.signals.types.u
-            laplace_periodic!(dz.u, z.u, pu.D, p_ode.dV)
-            @. dz.u -= pu.decay * z.u
-        end
+    #     if hasproperty(p_.signals.types, :u)
+    #         pu = p_.signals.types.u
+    #         laplace_periodic!(dz.u, z.u, pu.D, p_ode.dV)
+    #         @. dz.u -= pu.decay * z.u
+    #     end
 
-        if hasproperty(p_.signals.types, :v)
-            pv = p_.signals.types.v
-            laplace_periodic!(dz.v, z.v, pv.D, p_ode.dV)
-            @. dz.v -= pv.decay * z.v
-        end
-    end
+    #     if hasproperty(p_.signals.types, :v)
+    #         pv = p_.signals.types.v
+    #         laplace_periodic!(dz.v, z.v, pv.D, p_ode.dV)
+    #         @. dz.v -= pv.decay * z.v
+    #     end
+    # end
     
-    function rhs!(dz, z, p_ode, t)
-        p_ = p_ode.p
-        dz .= 0.0
+    # function rhs!(dz, z, p_ode, t)
+    #     p_ = p_ode.p
+    #     dz .= 0.0
 
-        if hasproperty(p_.signals.types, :u)
-            pu = p_.signals.types.u
-            laplace!(dz.u, z.u, pu.D, p_ode.dV)
-            @. dz.u -= pu.decay * z.u
-        end
+    #     if hasproperty(p_.signals.types, :u)
+    #         pu = p_.signals.types.u
+    #         laplace!(dz.u, z.u, pu.D, p_ode.dV)
+    #         @. dz.u -= pu.decay * z.u
+    #     end
 
-        if hasproperty(p_.signals.types, :v)
-            pv = p_.signals.types.v
-            laplace!(dz.v, z.v, pv.D, p_ode.dV)
-            @. dz.v -= pv.decay * z.v
-        end
-    end
+    #     if hasproperty(p_.signals.types, :v)
+    #         pv = p_.signals.types.v
+    #         laplace!(dz.v, z.v, pv.D, p_ode.dV)
+    #         @. dz.v -= pv.decay * z.v
+    #     end
+    # end
 
     if hasproperty(p, :signals)
-        if dim(p) == 3
-            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-            p_ode = (;  p = p,
-                        dV = (xs[2]-xs[1], ys[2]-ys[1], zs[2]-zs[1]))
-        elseif dim(p) == 2
-            xs, ys = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-            p_ode = (;  p = p,
-                        dV = (xs[2]-xs[1], ys[2]-ys[1]))
-        end
-
-        z0 = CA.ComponentArray(u = s.u, v = s.v)
-
-        ode_prob = ODEProblem(p.env.periodic ? rhs_periodic! : rhs!, z0, (0.0, p.sim.t_end), p_ode)
+        
+        grid = Tuple(LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid))
+        z0 = s.U
+        p_ode = (p..., dV = p.env.domain.size ./ p.signals.grid, tmp = similar(z0))
+        ode_prob = ODEProblem(pde!, z0, (0.0, p.sim.t_end), p_ode)
         
         ode_integrator = init(ode_prob, Heun(); 
                     save_everystep=false, 
@@ -224,9 +229,12 @@ function init_cache(p, s)
     else
         ode_prob = nothing
         ode_integrator = nothing
+        grid = nothing
     end
-
-    c = Cache(; st = sht, ode_prob, ode_integrator, F = svec(p)[], dX = svec(p)[], grad = svec(p)[], neighbour_avg = svec(p)[])
+    
+    data = StructArray{CellDataType(p)}(undef, length(s.X))
+    c = Cache(; st = sht, data, ode_prob, ode_integrator, grid)
+    
     resize_cache!(s, p, c)
     update_cache!(s, p, c)
 
