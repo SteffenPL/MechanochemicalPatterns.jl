@@ -218,8 +218,13 @@ function init_cache(p, s)
     if hasproperty(p, :signals)
         
         grid = Tuple(LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid))
+
+
+        
+        boundaries = map(sgn -> get(sgn, :boundaries, fill(NeumannBoundary(0.0), dim(p))), p.signals.types)
+
         z0 = s.U
-        p_ode = (p..., dV = p.env.domain.size ./ p.signals.grid, tmp = similar(z0))
+        p_ode = (p..., dV = p.env.domain.size ./ p.signals.grid, tmp = similar(z0), boundaries)
         ode_prob = ODEProblem(pde!, z0, (0.0, p.sim.t_end), p_ode)
         
         ode_integrator = init(ode_prob, Heun(); 

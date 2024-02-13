@@ -1,5 +1,5 @@
 function init_plot(s, p, cache;
-                    colors = [:magenta, :lightgreen],
+                    colors = [:lightgreen, :magenta],
                     bond_color = :darkorange,
                     show_signals = 1:0,
                     n_peaks = 0,
@@ -46,7 +46,7 @@ function init_plot(s, p, cache;
     end
 
     n_signals = length(show_signals)
-    u_nodes = [lift(s -> s.U.x[i], state_obs) for i in show_signals]
+    u_nodes = [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
 
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_hard[1:length($state_obs.X)]
@@ -60,7 +60,7 @@ function init_plot(s, p, cache;
     if dim(p) == 3
         ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
     elseif dim(p) == 2 
-        ax = Axis(fig[1:n_signals,1], title = t_node) # LScene(fig[1, 1])
+        ax = Axis(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node) # LScene(fig[1, 1])
         ax.aspect = DataAspect()
     end
 
@@ -145,9 +145,13 @@ function init_plot(s, p, cache;
 
         if n_signals > 0
             grid = cache.grid
+            signal_names = [string(st_key, " (#", st.ID,")") for (st_key, st) in pairs(p.signals.types)]
+
+            positions = ((1,2), (2,2), (1,3), (2,3), (1,4), (2,4))
+
             for i_s in 1:n_signals
                 (xs, ys) = cache.grid
-                ax_s = Axis(fig[i_s,2], xlabel = "x", ylabel = "y", title = "u")
+                ax_s = Axis(fig[positions[i_s]...], xlabel = "x", ylabel = "y", title = signal_names[show_signals[i_s]])
                 ax_s.aspect = DataAspect()
                 heatmap!(ax_s, xs, ys, u_nodes[i_s], colorrange = (0.0, 1.0), colormap = :thermal, interpolate = true)
             end

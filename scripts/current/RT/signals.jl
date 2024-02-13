@@ -38,9 +38,10 @@ function add_source!(s, p, cache)
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
         I = indexat(s, p, cache, s.X[i])
+        S = s.U.x[2][I...]
 
         for (k, sg) in enumerate(p.signals.types)            
-            s.U.x[k][I...] += get(signal_emission, k, 0.0) * inv_dvol * p.sim.dt
+            s.U.x[k][I...] += get(signal_emission, k, 0.0) * S * inv_dvol * p.sim.dt
         end
     end
 end
@@ -64,10 +65,11 @@ end
 end
 
 function update_gradients!(s, p, cache)
+    i_main = get(p.signals, :main, 1)
     inv_dV =  p.signals.grid ./ p.env.domain.size
     for i in eachindex(s.X)
         I = indexat(s, p, cache, s.X[i], 0)                   
-        cache.data.grad[i] = fd_grad(s.U.x[1], I, inv_dV, p)
+        cache.data.grad[i] = fd_grad(s.U.x[i_main], I, inv_dV, p)
     end
 end
 

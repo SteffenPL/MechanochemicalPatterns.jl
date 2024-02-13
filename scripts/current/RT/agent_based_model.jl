@@ -2,37 +2,6 @@ include("base.jl")
 
 rng_seeds = MersenneTwister()
 
-function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing, slider = true)
-    
-    if ismissing(seed)
-        seed = rand(RandomDevice(), 1:1000)
-    end
-
-    Random.seed!(seed)
-    printstyled("Setting seed to $seed\n", color = :green)
-    
-    p = load_parameters(fn)
-    s = init_state(p)
-    cache = init_cache(p, s)
-    
-    fig, s_obs = init_plot(s, p, cache; 
-                                show_polarities = true, 
-                                bottom_plots = false, 
-                                show_concentration = true,
-                                n_peaks = 10)
-    display(fig)
-        
-    states = [deepcopy(s)]
-    s = states[end]
-    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
-    if slider
-        add_slider!(fig, s_obs, states, p)
-    end
-    display(fig)
-
-    return states, p, cache, s_obs, fig, seed
-end
-
 
 begin 
     last_seed = rand(rng_seeds, 1:1000)
@@ -41,16 +10,18 @@ begin
     printstyled("Setting seed to $last_seed\n", color = :green)
 
     p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
-    #p = @set p.sim.t_end = 4.0
-    includet("inputs/model.jl")
+    #p = @set p.sim.t_end = 1.0
+    includet(joinpath("inputs", p.signals.model))
+
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 1:3)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 2:3)
     display(fig)
     
     states = [deepcopy(s)]
     s = states[end]
+    #@profview simulate(s, p, cache)
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
     add_slider!(fig, s_obs, states, p)
 end
@@ -119,3 +90,36 @@ end
 # dist(p, s.X[1], s.X[2])
 
 # cache.F
+
+
+
+function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing, slider = true)
+    
+    if ismissing(seed)
+        seed = rand(RandomDevice(), 1:1000)
+    end
+
+    Random.seed!(seed)
+    printstyled("Setting seed to $seed\n", color = :green)
+    
+    p = load_parameters(fn)
+    s = init_state(p)
+    cache = init_cache(p, s)
+    
+    fig, s_obs = init_plot(s, p, cache; 
+                                show_polarities = true, 
+                                bottom_plots = false, 
+                                show_concentration = true,
+                                n_peaks = 10)
+    display(fig)
+        
+    states = [deepcopy(s)]
+    s = states[end]
+    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
+    if slider
+        add_slider!(fig, s_obs, states, p)
+    end
+    display(fig)
+
+    return states, p, cache, s_obs, fig, seed
+end

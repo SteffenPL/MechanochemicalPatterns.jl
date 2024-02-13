@@ -9,6 +9,10 @@ function eval_param(p, x::@NamedTuple{uniform::Vector})
     return x.uniform[1] + rand() * (x.uniform[2] - x.uniform[1])
 end
 
+eval_param(p, x::@NamedTuple{neumann::Float64}) = NeumannBoundary(x.neumann)
+eval_param(p, x::@NamedTuple{periodic::T}) where {T} = PeriodicBoundary(0.0)
+eval_param(p, x::@NamedTuple{dirichlet::Float64}) = DirichletBoundary(x.dirichlet)
+
 function eval_param(p, x::@NamedTuple{uniform::String}) 
     # Example: {uniform = "domain"}
     if x.uniform == "domain"

@@ -17,5 +17,5 @@ module MechanochemicalPatterns
 
     export dist, dist², random_direction, safe_normalize
 
-    export laplace!, laplace_periodic!
+    export laplace!, NeumannBoundary, DirichletBoundary, PeriodicBoundary
 end
