@@ -206,8 +206,8 @@ function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
         # note -1 ≤ f1, f2 ≤ 1
 
         # adhesion potential per cell 
-        C1 = clamp(1 + ai + fi*bi*Bi, 0.0, 2.0)
-        C2 = clamp(1 + aj + fj*bj*Bj, 0.0, 2.0)        
+        C1 = clamp(1 + ai + fi*bi*Bi, 0.0, 1.5)
+        C2 = clamp(1 + aj + fj*bj*Bj, 0.0, 1.5)        
         f = C1 * C2
 
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)

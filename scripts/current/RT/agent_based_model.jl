@@ -2,6 +2,7 @@ include("base.jl")
 
 rng_seeds = MersenneTwister()
 
+set_theme!(theme_dark())
 
 begin 
     last_seed = rand(rng_seeds, 1:1000)

@@ -1,7 +1,7 @@
 [env]
-    damping = 1.0             # pg/hr (makes mass non-dimensional)
+    damping = 0.5             # pg/hr (makes mass non-dimensional)
     periodic = false
-    domain = { center = [0.0, 0], size = [1000.0, 1000.0] }   # μm
+    domain = { center = [0.0, 0], size = [1200.0, 1000.0] }   # μm
     gravity = -0.0  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
     dim = "julia: Val(2)"
     name = "elongation_self"
@@ -42,9 +42,9 @@
 
     [signals.types.Wnt]
         ID = 3
-        D = 5e4   # μm²/hr
-        decay = 5e-3
-        init = "julia: (pos) -> 0.5 + pos[1] / 1000" # "julia: (pos) -> 1.0 / (1 + 3e-5*((pos[1] - 150)^2 + 3*(pos[2])^2))" # 
+        D = 1e4   # μm²/hr
+        decay = 5e0
+        init = 0.0 # "julia: (pos) -> 0.5 + pos[1] / 1000" # "julia: (pos) -> 1.0 / (1 + 3e-5*((pos[1] - 150)^2 + 3*(pos[2])^2))" # 
         boundaries = [{neumann = 0.0}, {neumann = 0.0}]
 
     # [signals.types.BMP]
@@ -73,8 +73,8 @@
     R_adh = 14.0         # μm
     R_attract = 15.0     # μm
     R_interact = 15.0    # μm (maximal interaction range)
-    lifespan = "julia: Inf" # hr
-    repulsion_stiffness = 2.0 # 8.0
+    lifespan = 12.0 # "julia: Inf" # hr
+    repulsion_stiffness = 1.4 # 8.0
 
     sigma = 0.0         # μm / √hr (for additive white noise on positions)
     sigma_p = 0.0       # μm / √hr (for active brownian particles, acts on polarity)
@@ -102,7 +102,7 @@
 
     [cells.types.distal]
         ID = 1
-        N = 300
+        N = 200
     
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
@@ -112,7 +112,7 @@
 
         biased_adhesion = 0.0
 
-        signal_emission = [2e2, 0.0, 1e2, 0.0] #3e1
+        signal_emission = [2e2, 0.0, 1e3, 0.0] #3e1
 
         chemotaxis_strength = 5e3
         attraction_chemo_base = 0.4
@@ -122,7 +122,7 @@
 
     [cells.types.proximal]
         ID = 2
-        N = 300
+        N = 700
         
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
@@ -143,6 +143,6 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # hr
         adhesion_stiffness = 0.3
-        attraction_stiffness = 10.0
+        attraction_stiffness = 35.0
 
         biased_adhesion = 0.0
