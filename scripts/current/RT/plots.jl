@@ -8,7 +8,8 @@ function init_plot(s, p, cache;
                     show_soft_spheres = false,
                     transparency = false,
                     bottom_plots = false,
-                    alpha = missing
+                    alpha = missing,
+                    force_scale = 1.0
                     )
 
     if ismissing(alpha)
@@ -44,7 +45,7 @@ function init_plot(s, p, cache;
     E_node = lift(state_obs) do s 
         [get_bond(s,e) for e in edges(s.adh_bonds) ]
     end
-    F_node = @lift Point2f.($state_obs.F)
+    F_node = @lift force_scale .* Point2f.($state_obs.F)
 
     n_signals = length(show_signals)
     u_nodes = [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]

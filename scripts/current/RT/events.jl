@@ -20,6 +20,7 @@ function cell_divisions!(s, p, cache)
                 push!(s.cell_type, ct)
                 push!(s.cell_age, 0.0)
                 push!(s.sox9, s.sox9[i])
+                push!(s.F, zero(svec(p)))
 
                 add_vertex!(s.adh_bonds)
 
@@ -41,6 +42,7 @@ function cell_divisions!(s, p, cache)
                 push!(s.cell_type, ct)
                 push!(s.cell_age, 0.0)
                 push!(s.sox9, s.sox9[i])
+                push!(s.F, zero(svec(p)))
 
                 add_vertex!(s.adh_bonds)
 

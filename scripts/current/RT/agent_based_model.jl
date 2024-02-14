@@ -16,7 +16,7 @@ begin
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 2:3)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 2:3, force_scale = 0.1)
     display(fig)
     
     states = [deepcopy(s)]
