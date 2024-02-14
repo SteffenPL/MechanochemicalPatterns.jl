@@ -42,10 +42,10 @@
 
     [signals.types.Wnt]
         ID = 3
-        D = 5e2   # μm²/hr
-        decay = 4e-2
-        init = 0.0 # "julia: (pos) -> norm(pos) / 1000" # "julia: (pos) -> 0.5 + (pos[1] / 1000)"
-        boundaries = [{neumann = 0.0}, {neumann = 0.0}]
+        D = 1e2   # μm²/hr
+        decay = 2e-2
+        init = 0.0 # "julia: (pos) -> norm(pos) > 200 ? 0.1 : 0.0"
+        boundaries = [{dirichlet = 0.0}, {dirichlet = 0.0}]
 
     # [signals.types.BMP]
     #     ID = 4
@@ -73,20 +73,20 @@
     R_adh = 14.0         # μm
     R_attract = 18.0     # μm
     R_interact = 15.0    # μm (maximal interaction range)
-    lifespan = 20.0 # "julia: NaN64" # hr
-    repulsion_stiffness = 1.0 # 8.0
+    lifespan = "julia: NaN64" # hr
+    repulsion_stiffness = 2.0 # 8.0
 
     sigma = 0.0         # μm / √hr (for additive white noise on positions)
     sigma_p = 0.8       # μm / √hr (for active brownian particles, acts on polarity)
     plithotaxis = 0.0
-    v_self_prop = 0.0      # μm/hr (speed of cells in cluster)
+    v_self_prop = 5.0      # μm/hr (speed of cells in cluster)
     
     biased_adhesion = 0.0
     
 
     init_pos = {uniform = "domain"}
 
-    CIL = 0.0
+    CIL = 0.1
 
     medium_active = true
     medium_repulsion = 50.0 # μm/hr
@@ -95,16 +95,16 @@
 
     [cells.types.distal]
         ID = 1
-        N = 300
+        N = 500
     
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
         adhesion_stiffness = 0.0
-        attraction_stiffness = 1.2
+        attraction_stiffness = 0.5
 
-        biased_adhesion = 2.0
+        biased_adhesion = 2050.0
 
-        signal_emission = [2e2, 0.0, 5e1, 0.0] #3e1
+        signal_emission = [2e2, 0.0, 4e2, 0.0] #3e1
 
         chemotaxis_strength = 0e3
         init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
@@ -116,7 +116,7 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.6
-        attraction_stiffness = 1.0
+        attraction_stiffness = 0.4
 
         biased_adhesion = 0.0
 
@@ -130,6 +130,6 @@
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # hr
         adhesion_stiffness = 0.3
-        attraction_stiffness = 0.8
+        attraction_stiffness = 0.4
 
         biased_adhesion = 0.0

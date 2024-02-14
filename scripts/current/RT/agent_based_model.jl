@@ -28,98 +28,98 @@ end
 display(fig)
 play_animation!(fig, s_obs, states, 10)
 
-include("analysis.jl")
-
-fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
-display(fig)
-
-record(fig, "example_spirals.mp4", 1:2:length(states); framerate = 30) do i
-    update_plot!(fig, s_obs, states[i], p)
-end
-
-using Dates
-function save_video(states, p, s_obs, fig, seed, folder = "./scripts/current/RT/videos", fn = "./scripts/current/RT/inputs/parameters_2D.toml")
-
-    uuid = "sim_" * get(p.env, :name, "") * " " * Dates.format(now(), dateformat"yyyy-mm-dd HH:MM")
-    folder = joinpath(folder, uuid)
-    mkpath(folder)
-
-    record(fig, joinpath(folder,"sim.mp4"), 1:2:length(states); framerate = 30) do i
-        update_plot!(fig, s_obs, states[i], p)
-    end
-
-    if !isfile(joinpath(folder, "parameters.toml"))
-        cp(fn, joinpath(folder, "parameters.toml"))
-    
-        open(joinpath(folder, "seed.txt"), "w") do io
-            write(io, string(seed))
-        end
-    end
-end
-
-save_video(states, p, s_obs, fig, last_seed)
-
-function doit(seed = missing)
-    states, p, cache, s_obs, fig, seed = run_sim(;seed, slider = false)
-    save_video(states, p, s_obs, fig, seed)
-    return states, p, cache, s_obs, fig, seed
-end
-
-
-
-# p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
-# p = @set p.cells.types.distal.N = 2 
-# p = @set p.cells.types.proximal.N = 0
-# s = init_state(p)
-
-# cache = init_cache(p, s)
+# include("analysis.jl")
 
 # fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
 # display(fig)
-# s.X[2] = @SVector[250 - 1.0, 0.0]
-# s.X[1] = @SVector[-250 + 1.0 - 0, 0.0]
-# project_onto_domain!(s, p, cache)
 
-# s_obs[] = s
+# record(fig, "example_spirals.mp4", 1:2:length(states); framerate = 30) do i
+#     update_plot!(fig, s_obs, states[i], p)
+# end
 
-# reset_forces!(s, p, cache)
-# updatetable!(cache.st, s.X)
-# compute_interaction_forces!(s, p, cache)
+# using Dates
+# function save_video(states, p, s_obs, fig, seed, folder = "./scripts/current/RT/videos", fn = "./scripts/current/RT/inputs/parameters_2D.toml")
 
-# dist(s.X[1], s.X[2])
-# dist(p, s.X[1], s.X[2])
+#     uuid = "sim_" * get(p.env, :name, "") * " " * Dates.format(now(), dateformat"yyyy-mm-dd HH:MM")
+#     folder = joinpath(folder, uuid)
+#     mkpath(folder)
 
-# cache.F
+#     record(fig, joinpath(folder,"sim.mp4"), 1:2:length(states); framerate = 30) do i
+#         update_plot!(fig, s_obs, states[i], p)
+#     end
 
-
-
-function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing, slider = true)
+#     if !isfile(joinpath(folder, "parameters.toml"))
+#         cp(fn, joinpath(folder, "parameters.toml"))
     
-    if ismissing(seed)
-        seed = rand(RandomDevice(), 1:1000)
-    end
+#         open(joinpath(folder, "seed.txt"), "w") do io
+#             write(io, string(seed))
+#         end
+#     end
+# end
 
-    Random.seed!(seed)
-    printstyled("Setting seed to $seed\n", color = :green)
+# save_video(states, p, s_obs, fig, last_seed)
+
+# function doit(seed = missing)
+#     states, p, cache, s_obs, fig, seed = run_sim(;seed, slider = false)
+#     save_video(states, p, s_obs, fig, seed)
+#     return states, p, cache, s_obs, fig, seed
+# end
+
+
+
+# # p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
+# # p = @set p.cells.types.distal.N = 2 
+# # p = @set p.cells.types.proximal.N = 0
+# # s = init_state(p)
+
+# # cache = init_cache(p, s)
+
+# # fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
+# # display(fig)
+# # s.X[2] = @SVector[250 - 1.0, 0.0]
+# # s.X[1] = @SVector[-250 + 1.0 - 0, 0.0]
+# # project_onto_domain!(s, p, cache)
+
+# # s_obs[] = s
+
+# # reset_forces!(s, p, cache)
+# # updatetable!(cache.st, s.X)
+# # compute_interaction_forces!(s, p, cache)
+
+# # dist(s.X[1], s.X[2])
+# # dist(p, s.X[1], s.X[2])
+
+# # cache.F
+
+
+
+# function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing, slider = true)
     
-    p = load_parameters(fn)
-    s = init_state(p)
-    cache = init_cache(p, s)
+#     if ismissing(seed)
+#         seed = rand(RandomDevice(), 1:1000)
+#     end
+
+#     Random.seed!(seed)
+#     printstyled("Setting seed to $seed\n", color = :green)
     
-    fig, s_obs = init_plot(s, p, cache; 
-                                show_polarities = true, 
-                                bottom_plots = false, 
-                                show_concentration = true,
-                                n_peaks = 10)
-    display(fig)
+#     p = load_parameters(fn)
+#     s = init_state(p)
+#     cache = init_cache(p, s)
+    
+#     fig, s_obs = init_plot(s, p, cache; 
+#                                 show_polarities = true, 
+#                                 bottom_plots = false, 
+#                                 show_concentration = true,
+#                                 n_peaks = 10)
+#     display(fig)
         
-    states = [deepcopy(s)]
-    s = states[end]
-    simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
-    if slider
-        add_slider!(fig, s_obs, states, p)
-    end
-    display(fig)
+#     states = [deepcopy(s)]
+#     s = states[end]
+#     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
+#     if slider
+#         add_slider!(fig, s_obs, states, p)
+#     end
+#     display(fig)
 
-    return states, p, cache, s_obs, fig, seed
-end
+#     return states, p, cache, s_obs, fig, seed
+# end

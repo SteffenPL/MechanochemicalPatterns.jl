@@ -61,7 +61,7 @@ function pde!(du, u::ArrayPartition{Float64, Tuple{MT, MT, MT}}, p, t) where {MT
     du .= 0.0
     
     # diffusion factor 
-    f(x) = x > 0.5 ? 0.2 : 1.0
+    f(x) = x > 0.5 ? 0.1 : 1.0
 
     @. tmp.x[1] = f(u.x[1])
     Dom = tmp.x[1]

@@ -112,14 +112,18 @@ function compute_adhesive_forces!(s, p, cache)
         Xij = wrap(p, s.X[j] - s.X[i])
         l = dist(p, s.X[i], s.X[j])
         # k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-        
+
         if l > 0
-            f1 = dot(cache.data.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
-            f2 = dot(cache.data.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
+            #fgf = s.U.x[3][indexat(s, p, cache, s.X[i])]
+            #fgf = fgf
+            fgf = 1.0
+
+            f1 = dot(cache.data.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)  * fgf
+            f2 = dot(cache.data.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0) * fgf
 
             f1  = clamp(1 + f1, 0.0, 2.0)
             f2  = clamp(1 + f2, 0.0, 2.0)
-            factor = f1*f2
+            factor = f1*f2 # between 0 and 4
             
             k = factor * get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
             cache.data.F[i] += k * Xij
