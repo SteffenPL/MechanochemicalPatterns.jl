@@ -33,15 +33,16 @@ end
 function add_source!(s, p, cache)
     inv_dvol =  1.0 / prod(p.env.domain.size ./ p.signals.grid) 
     n_signals = length(p.signals.types) 
+
     for i in eachindex(s.X)
         ct = s.cell_type[i]
         signal_emission = get_param(p, ct, :signal_emission, 0.0)
     
-        I = indexat(s, p, cache, s.X[i])
-        S = s.U.x[2][I...]
+        I = CartesianIndex(indexat(s, p, cache, s.X[i]))
+        S = s.U.x[2][I]
 
-        for (k, sg) in enumerate(p.signals.types)            
-            s.U.x[k][I...] += get(signal_emission, k, 0.0) * S * inv_dvol * p.sim.dt
+        for k in 1:n_signals     
+            s.U.x[k][I] += signal_emission[clamp(k, axes(signal_emission,1))] * S * inv_dvol * p.sim.dt
         end
     end
 end
@@ -70,6 +71,7 @@ function update_gradients!(s, p, cache)
     for i in eachindex(s.X)
         I = indexat(s, p, cache, s.X[i], 0)                   
         cache.data.grad[i] = fd_grad(s.U.x[i_main], I, inv_dV, p)
+        s.sox9[i] = s.U.x[i_main][I...]
     end
 end
 
@@ -80,7 +82,6 @@ function follow_source!(s, p, cache)
         grad = cache.data.grad[i]
 
         grad_l = sqrt(sum( z->z^2, grad))
-
         if grad_l > 0.0
             grad_n = grad ./ grad_l
 

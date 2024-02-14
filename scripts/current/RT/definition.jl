@@ -12,7 +12,9 @@ const CA = ComponentArrays
 # time step (provided the parameters are known).
 @proto mutable struct State{Dim,ST}
     const X::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # position 
+    const F::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # forces
     const P::Vector{SVector{Dim,Float64}} = SVector{Dim,Float64}[]  # polarity
+    const sox9::Vector{Float64} = Float64[]                         # sox9 concentration
     const adh_bonds::AdhesionGraph = BoundedDegreeMetaGraph(0, 10)  # adhesion bonds
     const cell_type::Vector{Int} = Int[]
     const cell_age::Vector{Float64} = Float64[]
@@ -31,26 +33,6 @@ function partialcopy(s, lazy = false)
         )
 end
 
-@proto struct CellCache{SVT, SVTD} 
-    F::SVT
-    dX::SVT
-    grads::SVTD
-    neighbour_avg::SVT
-    neighbour_count::Int
-
-    R_soft::Float64
-    R_hard::Float64
-    R_adh::Float64
-    R_attract::Float64
-    t_divide::Float64
-    repulsion_stiffness::Float64
-    adhesion_stiffness::Float64
-    attraction_stiffness::Float64
-    biased_adhesion::Float64
-    new_adh_rate::Float64
-    break_adh_rate::Float64
-    run_time::Float64
-end
 
 using StructArrays
 
@@ -79,7 +61,6 @@ Base.show(io::IO, c::Cache) = @printf io "Cache(%d cells)" c.N
 function CellDataType(p)
     Dim = dim(p)
     return @NamedTuple begin 
-        F::SVector{Dim,Float64}
         dX::SVector{Dim,Float64}
         grad::SVector{Dim,Float64}
         neighbour_avg::SVector{Dim,Float64}
@@ -93,6 +74,10 @@ function CellDataType(p)
         adhesion_stiffness::Float64
         attraction_stiffness::Float64
         biased_adhesion::Float64
+        chemotaxis_strength::Float64
+        attraction_chemo_base::Float64
+        attraction_chemo_bias::Float64
+        k_sox9::Float64
         new_adh_rate::Float64
         break_adh_rate::Float64
         run_time::Float64
@@ -107,10 +92,12 @@ function init_state(p)
 
     # initial cell positions
     X = [ svec(p)(eval_param(p, get_param(p, cell_type[i], :init_pos))) for i in 1:N ]
+    F = [ zero(svec(p)) for i in 1:N ]
     P = [ random_direction(dim(p)) for i in 1:N]
 
     # initial age 
     cell_age = [ p.cells.lifespan * rand() for i in 1:N ]
+    sox9 = zeros(N)
     
     # adhesive network 
     adh_bonds = BDMGraph(N, 10)
@@ -135,7 +122,7 @@ function init_state(p)
         U = Float64[]
     end
 
-    return State(; X, P, cell_type, cell_age, adh_bonds, U = ArrayPartition(U...), t = 0.0)
+    return State(; X, F, P, cell_type, sox9, cell_age, adh_bonds, U = ArrayPartition(U...), t = 0.0)
 end
 
 function resize_cache!(s, p, cache)
@@ -166,6 +153,10 @@ function update_cache!(s, p, cache)
             update_p(:new_adh_rate)
             update_p(:break_adh_rate)
             update_p(:biased_adhesion)
+            update_p(:chemotaxis_strength)
+            update_p(:attraction_chemo_base)
+            update_p(:attraction_chemo_bias)
+            update_p(:k_sox9)
         end
         cache.outdated = false
     end
@@ -181,46 +172,9 @@ function init_cache(p, s)
                             dom.min - margin .* dom.size, 
                             dom.max + margin .* dom.size)
 
-    # function rhs_periodic!(dz, z, p_ode, t)
-    #     p_ = p_ode.p
-    #     dz .= 0.0
-
-    #     if hasproperty(p_.signals.types, :u)
-    #         pu = p_.signals.types.u
-    #         laplace_periodic!(dz.u, z.u, pu.D, p_ode.dV)
-    #         @. dz.u -= pu.decay * z.u
-    #     end
-
-    #     if hasproperty(p_.signals.types, :v)
-    #         pv = p_.signals.types.v
-    #         laplace_periodic!(dz.v, z.v, pv.D, p_ode.dV)
-    #         @. dz.v -= pv.decay * z.v
-    #     end
-    # end
-    
-    # function rhs!(dz, z, p_ode, t)
-    #     p_ = p_ode.p
-    #     dz .= 0.0
-
-    #     if hasproperty(p_.signals.types, :u)
-    #         pu = p_.signals.types.u
-    #         laplace!(dz.u, z.u, pu.D, p_ode.dV)
-    #         @. dz.u -= pu.decay * z.u
-    #     end
-
-    #     if hasproperty(p_.signals.types, :v)
-    #         pv = p_.signals.types.v
-    #         laplace!(dz.v, z.v, pv.D, p_ode.dV)
-    #         @. dz.v -= pv.decay * z.v
-    #     end
-    # end
-
     if hasproperty(p, :signals)
         
         grid = Tuple(LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid))
-
-
-        
         boundaries = map(sgn -> get(sgn, :boundaries, fill(NeumannBoundary(0.0), dim(p))), p.signals.types)
 
         z0 = s.U
@@ -248,7 +202,6 @@ end
 
 
 
-# helper functions
 @inline function neighbours_bc(p, st, pos, r)
     if p.env.periodic
         return periodic_neighbours(st, pos, r)

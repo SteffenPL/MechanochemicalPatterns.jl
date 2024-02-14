@@ -7,22 +7,26 @@
 end
 
 function reset_forces!(s, p, cache)
-    for i in eachindex(cache.data.F)
-        cache.data.F[i] = zero(svec(p))
+    for i in eachindex(s.F)
+        s.F[i] = zero(svec(p))
     end
 end
 
 function add_center_gravity!(s, p, cache)
     for i in eachindex(s.X)
-        cache.data.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
+        s.F[i] += (s.X[i] - p.env.domain.center) * get(p.env, :gravity, 0.0)
     end
 end
 
 function add_random_forces!(s, p, cache)
     inv_sqrt_dt = 1/sqrt(p.sim.dt)
     for i in eachindex(s.X)
-        cache.data.F[i] += randn(svec(p)) * p.cells.sigma * inv_sqrt_dt
+        s.F[i] += randn(svec(p)) * p.cells.sigma * inv_sqrt_dt
     end
+end
+
+function rotate(v, angle, forward)
+
 end
 
 # polarity dynamics 
@@ -33,17 +37,18 @@ function update_polarity!(s, p, cache)
         s.P[i] = safe_normalize(s.P[i])
 
         nF = norm(cache.data.dX[i])
-        if nF > 0 && cache.data.neighbour_count[i] < 5
+        cil = get_param(p, ct, :CIL, 0.0)
+        if cil > 0 && nF > 0 && cache.data.neighbour_count[i] < 5
             dFP = dot(s.P[i], cache.data.dX[i])/nF
             PT = nF * (1 - dFP) * safe_normalize(cache.data.dX[i] - dFP*nF * s.P[i])
-            s.P[i] += get_param(p, ct, :CIL, 0.0) * p.sim.dt * PT
+            s.P[i] += cil * p.sim.dt * PT
             s.P[i] = safe_normalize(s.P[i])
         end
 
         # if p.cells.medium_active && p.cells.plithotaxis > 0 && cache.data.neighbour_count[i] > 6 
-        #     nf = sqrt(sum(z -> z^2, cache.data.F[i]))
-        #     fp = @. cache.data.F[i]/nf - s.P[i]
-        #     align = dot(s.P[i], cache.data.F[i]) / nf
+        #     nf = sqrt(sum(z -> z^2, s.F[i]))
+        #     fp = @. s.F[i]/nf - s.P[i]
+        #     align = dot(s.P[i], s.F[i]) / nf
         #     fp = fp
         #     fp /= norm(fp)
 
@@ -57,9 +62,9 @@ function add_self_prop!(s, p, cache)
     dt_factor = p.cells.v_self_prop * p.env.damping
     for i in eachindex(s.X)
         if !p.cells.medium_active || cache.data.neighbour_count[i] > 6
-            cache.data.F[i] += s.P[i] * dt_factor
+            s.F[i] += s.P[i] * dt_factor
         else 
-            cache.data.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
+            s.F[i] += s.P[i] * dt_factor * p.cells.medium_slowdown
         end
     end
 end
@@ -109,32 +114,56 @@ function compute_adhesive_forces!(s, p, cache)
     bonds = s.adh_bonds
     for e in edges(bonds)
         i, j = src(e), dst(e)
+        
         Xij = wrap(p, s.X[j] - s.X[i])
         l = dist(p, s.X[i], s.X[j])
         # k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
 
+        # 1. we compute the attraction willingness of both cells,
+        # that depends on the gradient signal and bias 
+
         if l > 0
-            #fgf = s.U.x[3][indexat(s, p, cache, s.X[i])]
-            #fgf = fgf
-            fgf = 1.0
+            # chem = s.U.x[p.signals.main]
+            # cti = s.cell_type[i]
+            # ctj = s.cell_type[j]
 
-            f1 = dot(cache.data.grad[i], Xij) / l * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)  * fgf
-            f2 = dot(cache.data.grad[j], -Xij) / l * get_param(p, s.cell_type[j], :biased_adhesion, 0.0) * fgf
+            # Ai = chem[indexat(s, p, cache, s.X[i], 0)]  
+            # Aj = chem[indexat(s, p, cache, s.X[j], 0)]
 
-            f1  = clamp(1 + f1, 0.0, 2.0)
-            f2  = clamp(1 + f2, 0.0, 2.0)
-            factor = f1*f2 # between 0 and 4
-            
-            k = factor * get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
-            cache.data.F[i] += k * Xij
-            cache.data.F[j] -= k * Xij
+            # Gi = cache.data.grad[i]
+            # Gj = cache.data.grad[j]
+
+            # Bi = norm(Gi)
+            # Bj = norm(Gj)
+
+            # ai = cache.data.attraction_chemo_base[i]
+            # aj = cache.data.attraction_chemo_base[j]
+
+            # bi = cache.data.attraction_chemo_bias[i]
+            # bj = cache.data.attraction_chemo_bias[j]
+
+            # f1 = Bi > 0 ? dot(Gi,  Xij) / (l*Bi) : 0.0
+            # f2 = Bj > 0 ? dot(Gj, -Xij) / (l*Bj) : 0.0
+            # # note -1 ≤ f1, f2 ≤ 1
+
+            # k = get_hetero_param(s, p, cache, i, j, :adhesion_stiffness)
+            # k_extr = ai * Ai + aj * Aj + bi * f1 * (0.1 + Bi) + bj * f2 * (0.1 + Bj)
+            # if k_extr > 0.1
+            #     @show i, j, k_extr
+            # end
+            # print(k_extr, " ")
+
+            # k = k + clamp(k_extr, 0, k)
+
+            # s.F[i] += k * Xij
+            # s.F[j] -= k * Xij
         end
     end
 end
 
 function compute_gravity_forces!(s, p, cache)
     for i in eachindex(s.X)
-        cache.data.F[i] += p.env.gravity
+        s.F[i] += p.env.gravity
     end
 end
 
@@ -143,26 +172,48 @@ function repulsion_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     if 0.0 < dij < Rij 
         k = cache.data.repulsion_stiffness[i] + cache.data.repulsion_stiffness[j]
         Xji = wrap(p, s.X[i] - s.X[j])
-        cache.data.F[i] += (Rij - dij) * k / dij * Xji
-        cache.data.F[j] -= (Rij - dij) * k / dij * Xji
+        s.F[i] += (Rij - dij) * k / dij * Xji
+        s.F[j] -= (Rij - dij) * k / dij * Xji
     end
 end
 
 function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
     Rij = cache.data.R_attract[i] + cache.data.R_attract[j] 
     if 0.0 < dij < Rij
-        Xji = wrap(p, s.X[i] - s.X[j])
+        Xij = wrap(p, s.X[j] - s.X[i])
+        l = sqrt(sum(x->x^2, Xij))
 
-        f1 = dot(cache.data.grad[i], -Xji) / dij * get_param(p, s.cell_type[i], :biased_adhesion, 0.0)
-        f2 = dot(cache.data.grad[j], Xji) / dij * get_param(p, s.cell_type[j], :biased_adhesion, 0.0)
-        f1  = clamp(1 + f1, 0.0, 2.0)
-        f2  = clamp(1 + f2, 0.0, 2.0)
-        factor = f1*f2
+        cti = s.cell_type[i]
+        ctj = s.cell_type[j]
+
+        Ai = s.sox9[i]
+        Aj = s.sox9[j]
+
+        Gi = cache.data.grad[i]
+        Gj = cache.data.grad[j]
+
+        Bi = norm(Gi)
+        Bj = norm(Gj)
+
+        ai = cache.data.attraction_chemo_base[i]
+        aj = cache.data.attraction_chemo_base[j]
+
+        bi = cache.data.attraction_chemo_bias[i]
+        bj = cache.data.attraction_chemo_bias[j]
+
+        fi = dot(s.P[i],  Xij) / l
+        fj = dot(s.P[j], -Xij) / l
+        # note -1 ≤ f1, f2 ≤ 1
+
+        # adhesion potential per cell 
+        C1 = clamp(1 + fi*bi*Bi, 0, sqrt(2))
+        C2 = clamp(1 + fj*bj*Bj, 0, sqrt(2))
 
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
-        k *= factor
-        cache.data.F[i] -= (Rij - dij) * k / dij * Xji
-        cache.data.F[j] += (Rij - dij) * k / dij * Xji
+        k *= C1 * C2 * p.cells.chemo_max
+
+        s.F[i] += (Rij - dij) * k / dij * Xij
+        s.F[j] -= (Rij - dij) * k / dij * Xij
     end
 end
 
@@ -232,7 +283,7 @@ end
 function compute_medium_forces!(s, p, cache)
     for i in eachindex(s.X)
         nl = sqrt(sum(x->x^2, cache.data.neighbour_avg[i]))
-        cache.data.F[i] += p.cells.medium_repulsion * cache.data.neighbour_avg[i] * nl
+        s.F[i] += p.cells.medium_repulsion * cache.data.neighbour_avg[i] * nl
     end
 end
 

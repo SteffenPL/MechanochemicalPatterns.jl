@@ -17,8 +17,9 @@ function time_step!(s, p, cache)
     end
 
     # cell events
-    add_bonds!(s, p, cache)
-    remove_bonds!(s, p, cache)
+    #add_bonds!(s, p, cache)
+    #remove_bonds!(s, p, cache)
+    update_cell_internals!(s, p, cache)
 
     # medium interaction 
     compute_neighbourhood!(s, p, cache)
@@ -47,7 +48,7 @@ function time_step!(s, p, cache)
 
     # add forces
     for i in eachindex(s.X)
-        s.X[i] += cache.data.F[i] * p.sim.dt / p.env.damping
+        s.X[i] += s.F[i] * p.sim.dt / p.env.damping
     end
 
     # deal with constraints

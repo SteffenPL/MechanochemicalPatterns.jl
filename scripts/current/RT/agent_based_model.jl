@@ -10,7 +10,7 @@ begin
     printstyled("Setting seed to $last_seed\n", color = :green)
 
     p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
-    #p = @set p.sim.t_end = 1.0
+    p = @set p.sim.t_end = 60.0
     includet(joinpath("inputs", p.signals.model))
 
     s = init_state(p)
@@ -21,7 +21,8 @@ begin
     
     states = [deepcopy(s)]
     s = states[end]
-    #@profview simulate(s, p, cache)
+    #
+    # @profview simulate(s, p, cache)
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
     add_slider!(fig, s_obs, states, p)
 end

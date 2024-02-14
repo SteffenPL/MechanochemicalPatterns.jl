@@ -39,11 +39,12 @@ function init_plot(s, p, cache;
         end
     end
 
-    X_node = @lift $state_obs.X
+    X_node = @lift Point2f.($state_obs.X)
     ct = @lift $state_obs.cell_type
     E_node = lift(state_obs) do s 
         [get_bond(s,e) for e in edges(s.adh_bonds) ]
     end
+    F_node = @lift Point2f.($state_obs.F)
 
     n_signals = length(show_signals)
     u_nodes = [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
@@ -51,7 +52,7 @@ function init_plot(s, p, cache;
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_hard[1:length($state_obs.X)]
     Rs_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_soft[1:length($state_obs.X)]
-
+    Sox_node = @lift $state_obs.sox9
 
     # create plot
 
@@ -123,9 +124,16 @@ function init_plot(s, p, cache;
                     markersize = R_node, markerspace = :data, marker = Makie.Circle, 
                     color = ct, colormap = colors)
 
+        Rsox = @lift 2 * cache.data.R_hard[1:length($state_obs.X)] .* $state_obs.sox9
+        scatter!(X_node, 
+                    markersize = Rsox, markerspace = :data, marker = Makie.Circle, 
+                    color = (:yellow, 1.0))
+
         scatter!(X_node, 
                     markersize = Rs_node, markerspace = :data, marker = Makie.Circle,
                     color = ct, colormap = transparent_colors)
+
+        arrows!(X_node, F_node, color = :red, linewidth = 1, arrowsize = 5; transparency)
 
         xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
         ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
