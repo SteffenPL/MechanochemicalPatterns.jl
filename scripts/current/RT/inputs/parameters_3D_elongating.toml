@@ -1,16 +1,16 @@
 [env]
-    damping = 1.0             # pg/hr (makes mass non-dimensional)
+    damping = 0.5             # pg/hr (makes mass non-dimensional)
     periodic = false
-    domain = { center = [0.0, 0], size = [1400.0, 1400.0] }   # μm
+    domain = { center = [0.0, 0, 0], size = [1200.0, 1000.0, 1000] }   # μm
     gravity = -0.0  # μm/hr (as a velocity, assuming similar masses of all cells and stokes drag)
-    dim = "julia: Val(2)"
+    dim = "julia: Val(3)"
     name = "elongation_self"
 
 [plot]
     alpha_soft = 0.1
 
 [sim]
-    t_end   = "julia: 80.0"  # hr
+    t_end   = "julia: 32.0"  # hr
     dt      = 0.0025  # hr
     saveat  = 0.1   # hr
 
@@ -19,34 +19,33 @@
         margin = 0.05  # 0-1
 
 [signals]
-    grid = [100, 100]
-    dt = 0.005  # hr
+    grid = [50, 50, 50]
+    dt = 0.05  # hr
     saveat = 0.1 # hr
     model = "./model.jl"
 
-    main = [0.0, 5.0, 3.0]
-    internal = [0.0, 1.0, 0.0]
+    main = 2
     
     [signals.types.Domain]
         ID = 1
-        D = 5e0   # μm²/hr
-        decay = 5e-3
+        D = 1e2   # μm²/hr
+        decay = 1e-1
         init = 0.0
-        boundaries = [{neumann = 0.0}, {neumann = 0.0}]
+        boundaries = [{neumann = 0.0}, {neumann = 0.0}, {neumann = 0.0}]
 
     [signals.types.FGF]
         ID = 2
-        D = 1e3   # μm²/hr
-        decay = 5e-4
-        init = 0.0 # "julia: (pos) -> norm(pos) > 200 ? 1.0 : 0.0"
-        boundaries = [{dirichlet = 1.0}, {dirichlet = 1.0}]
+        D = 0.0 #2e3   # μm²/hr
+        decay = 0.0 # 4e-2
+        init = "julia: (pos) -> 0.5 + (pos[1] / 1000)" # 0.0 # "julia: (pos) -> norm(pos) > 200 ? 1.0 : 0.0"
+        boundaries = [{neumann = 0.0}, {neumann = 0.0}, {neumann = 0.0}] # [{dirichlet = 1.0}, {dirichlet = 1.0}]
 
     [signals.types.Wnt]
         ID = 3
-        D = 2e2   # μm²/hr
-        decay = 5e-3
-        init = "julia: (pos) -> 1.0 / ( (0.01 * norm(pos))^2 + 0.1 )" # 0.0 #"julia: (pos) -> 0.5 + (pos[1] / 1000)"
-        boundaries = [{neumann = 0.0}, {neumann = 0.0}]
+        D = 0e4   # μm²/hr
+        decay = 0e0
+        init = 0.0 # "julia: (pos) -> 0.5 + pos[1] / 1000" # "julia: (pos) -> 1.0 / (1 + 3e-5*((pos[1] - 150)^2 + 3*(pos[2])^2))" # 
+        boundaries = [{neumann = 0.0}, {neumann = 0.0}, {neumann = 0.0}]
 
     # [signals.types.BMP]
     #     ID = 4
@@ -72,74 +71,78 @@
     R_soft = 15.0        # μm
     R_hard = 2.0         # μm 
     R_adh = 14.0         # μm
-    R_attract = 18.0     # μm
+    R_attract = 15.0     # μm
     R_interact = 15.0    # μm (maximal interaction range)
-    lifespan = "julia: NaN64" # hr
-    repulsion_stiffness = 1.0 # 8.0
+    lifespan = 12.0 # "julia: Inf" # hr
+    repulsion_stiffness = 1.8 # 8.0
 
     sigma = 0.0         # μm / √hr (for additive white noise on positions)
-    sigma_p = 0.8       # μm / √hr (for active brownian particles, acts on polarity)
+    sigma_p = 0.0       # μm / √hr (for active brownian particles, acts on polarity)
     plithotaxis = 0.0
-    v_self_prop = 5.0      # μm/hr (speed of cells in cluster)
+    v_self_prop = 0.0      # μm/hr (speed of cells in cluster)
     
     biased_adhesion = 0.0
+    
+
+    init_pos = {uniform = "domain"}
+
+    CIL = 0.0
+
+    medium_active = true
+    medium_repulsion = 70.0 # μm/hr
+    medium_alpha = 0.0      # n.d.
+    medium_slowdown = 0.5   # n.d.
+
+    k_sox9 = 0.0
 
     chemotaxis_strength = 0.0
     attraction_chemo_base = 0.0
     attraction_chemo_bias = 0.0
-    chemo_max = 15.0
-
-    cond_signal_emission = [[1, 2, 3, 1e3]]  # type, from, to, factor
-
-    init_pos = {uniform = "domain"}
-
-    CIL = 0.1
-
-    medium_active = true
-    medium_repulsion = 50.0 # μm/hr
-    medium_alpha = 0.0      # n.d.
-    medium_slowdown = 0.5   # n.d.
+    chemo_max = 40.0
 
     [cells.types.distal]
         ID = 1
-        N = 500
+        N = 1000
     
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 1.0  # 1/hr
         adhesion_stiffness = 0.0
-        attraction_stiffness = 1.3
+        attraction_stiffness = 10.0
+        k_sox9 = 1.0
 
-        biased_adhesion = 250.0
+        biased_adhesion = 0.0
 
-        signal_emission = [2e2, 0.0, 0e2] #3e1
+        signal_emission = [2e2, 0.0, 1e3, 0.0] #3e1
 
-        chemotaxis_strength = 1e3
+        chemotaxis_strength = 5e3
         attraction_chemo_base = 0.4
-        attraction_chemo_bias = 700.0
+        attraction_chemo_bias = 800.0
 
-        init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
+        init_pos = {normal = {mean = [0.0,0.0, 0.0], std = [100.0, 100.0, 100.0]}} # {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
 
     [cells.types.proximal]
         ID = 2
-        N = 500
+        N = 3000
         
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr
         adhesion_stiffness = 0.6
-        attraction_stiffness = 0.6
+        attraction_stiffness = 10.0
 
         biased_adhesion = 0.0
 
-        signal_emission = [2e2, 0.0, 0.0] #3e1
+        signal_emission = [2e2, 0.0, 0.0, 0.0] #3e1
+        
         chemotaxis_strength = 0e1
-
-        init_pos = {normal = {mean = [0.0,0.0], std = [100.0, 100.0]}}
+        attraction_chemo_bias = 0.0
+        
+        init_pos = {normal = {mean = [0.0,0.0, 0.0], std = [100.0, 100.0, 100.0]}}
         # init_pos = {normal = {mean = [-20.0,0.0], std = [100.0, 100.0]}}
 
     [cells.interaction]
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # hr
         adhesion_stiffness = 0.3
-        attraction_stiffness = 0.8
+        attraction_stiffness = 35.0
 
         biased_adhesion = 0.0

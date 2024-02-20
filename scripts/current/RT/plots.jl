@@ -45,7 +45,7 @@ function init_plot(s, p, cache;
     E_node = lift(state_obs) do s 
         [get_bond(s,e) for e in edges(s.adh_bonds) ]
     end
-    F_node = @lift force_scale .* Point2f.($state_obs.F)
+    F_node = @lift @. Point2f(force_scale * ($state_obs.F))
 
     n_signals = length(show_signals)
     u_nodes = [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
@@ -72,7 +72,7 @@ function init_plot(s, p, cache;
 
     if dim(p) == 3
         meshscatter!(X_node, 
-                   markersize = R_node, markerspace = :data, 
+                   markersize = Rs_node, markerspace = :data, 
                    color = ct, colormap = colors; transparency)
 
         if show_soft_spheres
@@ -104,19 +104,6 @@ function init_plot(s, p, cache;
             scatter!(X_yz_node, color = ct, colormap = colors, markersize = 5.0; transparency)
         end
 
-        # create signal plot
-        if show_concentration && dim(p) == 3
-            #ax2 = Axis3(fig[1,2], xlabel = "x", ylabel = "y", title = "u", aspect = :data)
-            #volume!(u_node, colorrange = (0,1.0))
-            #olorbar(fig[1,3], ax2)
-            u_flat = @lift dropdims(maximum($state_obs.u, dims = 3), dims = 3)
-            u_max = @lift (0.0, 0.01 + maximum($state_obs.u))
-            ax2 = Axis(fig[1,2], xlabel = "x", ylabel = "y", title = "u")
-            ax2.aspect = DataAspect()
-            xs, ys, zs = LinRange.( p.env.domain.min, p.env.domain.max, p.signals.grid )
-            hm = heatmap!(ax2, xs, ys, u_flat, colormap = :thermal, interpolate = true, colorrange = u_max)
-            Colorbar(fig[1,3], hm)
-        end
     end
 
     if dim(p) == 2 
@@ -162,7 +149,7 @@ function init_plot(s, p, cache;
                 (xs, ys) = cache.grid
                 ax_s = Axis(fig[positions[i_s]...], xlabel = "x", ylabel = "y", title = signal_names[show_signals[i_s]])
                 ax_s.aspect = DataAspect()
-                heatmap!(ax_s, xs, ys, u_nodes[i_s], colorrange = (0.0, 1.0), colormap = :thermal, interpolate = true)
+                heatmap!(ax_s, xs, ys, u_nodes[i_s], colorrange = (0.0, 2.0), colormap = :thermal, interpolate = true)
             end
         end
     end

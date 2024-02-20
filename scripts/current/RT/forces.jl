@@ -211,7 +211,7 @@ function attraction_kernel!(s, p, cache, i, j, Xi, Xj, dij)
         f = C1 * C2
 
         k = get_hetero_param(s, p, cache, i, j, :attraction_stiffness)
-        k = ( f < 1 ) ? (f * k) : (k + (f-1) * (p.cells.chemo_max-k))
+        k = ( f < 1 ) ? (f * k) : (k + (f-1) * (get(p.cells,:chemo_max,2k)-k))
 
         s.F[i] += k / dij * Xij
         s.F[j] -= k / dij * Xij

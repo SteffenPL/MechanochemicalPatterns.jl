@@ -11,13 +11,12 @@ begin
     printstyled("Setting seed to $last_seed\n", color = :green)
 
     p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
-    p = @set p.sim.t_end = 60.0
     includet(joinpath("inputs", p.signals.model))
 
     s = init_state(p)
     cache = init_cache(p, s)
 
-    fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_signals = 2:3, force_scale = 0.1)
+    fig, s_obs = init_plot(s, p, cache; show_polarities = false, bottom_plots = false, show_signals = 1:3, force_scale = 0.3)
     display(fig)
     
     states = [deepcopy(s)]
@@ -25,103 +24,70 @@ begin
     #
     # @profview simulate(s, p, cache)
     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.05),), states = states)
-    add_slider!(fig, s_obs, states, p)
+    add_slider!(fig, s_obs, states, p) #view(states,1:600), p)
 end
 display(fig)
 play_animation!(fig, s_obs, states, 10)
 
 # include("analysis.jl")
 
-# fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
-# display(fig)
+# fig, s_obs = init_plot(s, p, cache; show_polarities = false, bottom_plots = true)
 
-# record(fig, "example_spirals.mp4", 1:2:length(states); framerate = 30) do i
-#     update_plot!(fig, s_obs, states[i], p)
+fig, s_obs = init_plot(s, p, cache; show_polarities = false, bottom_plots = false, show_signals = 1:3, force_scale = 0.5)
+display(fig)
+
+record(fig, "three_directions_with_initial_wnt.mp4", 1:2:length(states); framerate = 30) do i
+     update_plot!(fig, s_obs, states[i], p)
+end
+
+
+
+
+# GLMakie.activate!(ssao=true)
+# GLMakie.closeall() # close any open screen
+
+# set_theme!(theme_light())
+
+# begin 
+
+#     fig = Figure(size= ( 1200, 500))
+#     ssao = Makie.SSAO(radius = 20.0, blur = 5)
+#     cm = (x -> (x, 1.0)).([:lightgreen, :magenta])
+#     limits = Rect3( (0,0,0),(1000,1000,800))
+#     cm2 = (:thermal, 0.5) #[(:white,0.1), (:lightblue,1.0), (:blue,1.0)]
+#     scenekw = (ssao=ssao, )
+#     ax0 = LScene(fig[1,1]; scenekw)
+
+#     s = states[5]
+#     meshscatter!(Point3f.(s.X), markersize = 6, markerspace = :data, color = s.cell_type, colormap = cm, ssao=true)
+#     surface!(LinRange(-500,500,50), LinRange(-500,500,50), fill(-300,50,50), color = sum(s.U.x[2], dims=3)[:,:,1], colormap = cm2)
+
+
+#     ax1 = LScene(fig[1,2]; scenekw)
+
+#     s = states[30]
+#     meshscatter!(Point3f.(s.X), markersize = 6, markerspace = :data, color = s.cell_type, colormap = cm, ssao=true)
+#     surface!(LinRange(-500,500,50), LinRange(-500,500,50), fill(-300,50,50), color = sum(s.U.x[2], dims=3)[:,:,1], colormap = cm2)
+
+#     ax2 = LScene(fig[1,3]; scenekw)
+#     s = states[70]
+#     meshscatter!(Point3f.(s.X), markersize = 6, markerspace = :data, color = s.cell_type, colormap = cm, ssao=true)
+#     surface!(LinRange(-500,500,50), LinRange(-500,500,50), fill(-300,50,50), color = sum(s.U.x[2], dims=3)[:,:,1], colormap = cm2)
+
+#     rotate_cam!(ax0.scene, (10.0, 35.0, 0.0) .* π./180)
+#     rotate_cam!(ax1.scene, (10.0, 35.0, 0.0) .* π./180)
+#     rotate_cam!(ax2.scene, (10.0, 35.0, 0.0) .* π./180)
+
+#     fig
 # end
 
-# using Dates
-# function save_video(states, p, s_obs, fig, seed, folder = "./scripts/current/RT/videos", fn = "./scripts/current/RT/inputs/parameters_2D.toml")
+# begin 
+#     fig = Figure() 
 
-#     uuid = "sim_" * get(p.env, :name, "") * " " * Dates.format(now(), dateformat"yyyy-mm-dd HH:MM")
-#     folder = joinpath(folder, uuid)
-#     mkpath(folder)
+#     ax = Axis(fig[1,1])
 
-#     record(fig, joinpath(folder,"sim.mp4"), 1:2:length(states); framerate = 30) do i
-#         update_plot!(fig, s_obs, states[i], p)
-#     end
+#     s = states[70]
+#     heatmap!(sum(s.U.x[3], dims=3)[:,:,1], colormap = :heat, interpolate = true)
 
-#     if !isfile(joinpath(folder, "parameters.toml"))
-#         cp(fn, joinpath(folder, "parameters.toml"))
-    
-#         open(joinpath(folder, "seed.txt"), "w") do io
-#             write(io, string(seed))
-#         end
-#     end
-# end
-
-# save_video(states, p, s_obs, fig, last_seed)
-
-# function doit(seed = missing)
-#     states, p, cache, s_obs, fig, seed = run_sim(;seed, slider = false)
-#     save_video(states, p, s_obs, fig, seed)
-#     return states, p, cache, s_obs, fig, seed
-# end
-
-
-
-# # p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
-# # p = @set p.cells.types.distal.N = 2 
-# # p = @set p.cells.types.proximal.N = 0
-# # s = init_state(p)
-
-# # cache = init_cache(p, s)
-
-# # fig, s_obs = init_plot(s, p, cache; show_polarities = true, bottom_plots = true, show_concentration = true, show_v = false)
-# # display(fig)
-# # s.X[2] = @SVector[250 - 1.0, 0.0]
-# # s.X[1] = @SVector[-250 + 1.0 - 0, 0.0]
-# # project_onto_domain!(s, p, cache)
-
-# # s_obs[] = s
-
-# # reset_forces!(s, p, cache)
-# # updatetable!(cache.st, s.X)
-# # compute_interaction_forces!(s, p, cache)
-
-# # dist(s.X[1], s.X[2])
-# # dist(p, s.X[1], s.X[2])
-
-# # cache.F
-
-
-
-# function run_sim(fn = "$(@__DIR__)/inputs/parameters_2D.toml"; seed = missing, slider = true)
-    
-#     if ismissing(seed)
-#         seed = rand(RandomDevice(), 1:1000)
-#     end
-
-#     Random.seed!(seed)
-#     printstyled("Setting seed to $seed\n", color = :green)
-    
-#     p = load_parameters(fn)
-#     s = init_state(p)
-#     cache = init_cache(p, s)
-    
-#     fig, s_obs = init_plot(s, p, cache; 
-#                                 show_polarities = true, 
-#                                 bottom_plots = false, 
-#                                 show_concentration = true,
-#                                 n_peaks = 10)
-#     display(fig)
-        
-#     states = [deepcopy(s)]
-#     s = states[end]
-#     simulate(s, p, cache; callbacks = (update_plot_callback!(fig, s_obs, 0.01),), states = states)
-#     if slider
-#         add_slider!(fig, s_obs, states, p)
-#     end
-#     display(fig)
-
-#     return states, p, cache, s_obs, fig, seed
+#     fig 
 # end

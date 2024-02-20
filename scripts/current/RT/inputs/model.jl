@@ -1,26 +1,26 @@
 
-function pde!(du, u::ArrayPartition{Float64, Tuple{MT,MT,MT}}, p, t) where {MT <: Array}
-    tmp = p.tmp 
-    (FGF, Wnt, Dom) = u.x
-    (dFGF, dWnt, dDom) = du.x
+# function pde!(du, u::ArrayPartition{Float64, Tuple{MT,MT,MT}}, p, t) where {MT <: Array}
+#     tmp = p.tmp 
+#     (FGF, Wnt, Dom) = u.x
+#     (dFGF, dWnt, dDom) = du.x
 
-    dFGF .= 0.0
-    dWnt .= 0.0
-    dDom .= 0.0
+#     dFGF .= 0.0
+#     dWnt .= 0.0
+#     dDom .= 0.0
 
-    tmp.x[1] .=  
+#     tmp.x[1] .=  
 
-    laplace!(dFGF, FGF, p.FGF.D, p.dV)
-    laplace!(dWnt, Wnt, p.Wnt.D, p.dV)
-    laplace!(dDom, Dom, p.Dom.D, p.dV)
+#     laplace!(dFGF, FGF, p.FGF.D, p.dV)
+#     laplace!(dWnt, Wnt, p.Wnt.D, p.dV)
+#     laplace!(dDom, Dom, p.Dom.D, p.dV)
 
-    # decay
-    @. dFGF -= p.FGF.decay * FGF
-    @. dWnt -= p.Wnt.decay * Wnt
-    @. dDom -= p.Dom.decay * Dom
+#     # decay
+#     @. dFGF -= p.FGF.decay * FGF
+#     @. dWnt -= p.Wnt.decay * Wnt
+#     @. dDom -= p.Dom.decay * Dom
 
-    return nothing
-end
+#     return nothing
+# end
 
 
 function pde!(du, u::ArrayPartition{Float64, Tuple{MT}}, p, t) where {MT <: Array}
@@ -62,14 +62,18 @@ function pde!(du, u::ArrayPartition{Float64, Tuple{MT, MT, MT}}, p, t) where {MT
     
     # diffusion factor 
     f(x) = x > 0.5 ? 0.1 : 1.0
+    f_c(x) = x < 0.5 ? 0.0 : 1.0
 
     @. tmp.x[1] = f(u.x[1])
     Dom = tmp.x[1]
 
+    @. tmp.x[2] = f_c(u.x[1])
+    InsideDom = tmp.x[2]
+
     # Domain, Sox9, Wnt, BMP, FGF8
     laplace!(du.x[1], u.x[1], st[1].D, p.dV, boundaries = p.boundaries[1])
     laplace!(du.x[2], u.x[2], st[2].D, p.dV, boundaries = p.boundaries[2], factor = Dom)
-    laplace!(du.x[3], u.x[3], st[3].D, p.dV, boundaries = p.boundaries[3])
+    laplace!(du.x[3], u.x[3], st[3].D, p.dV, boundaries = p.boundaries[3], factor = InsideDom)
     
     # decay
     @. du.x[1] -= st[1].decay * u.x[1]
