@@ -10,7 +10,7 @@ begin
 
     printstyled("Setting seed to $last_seed\n", color = :green)
 
-    p = load_parameters("$(@__DIR__)/inputs/parameters_2D.toml")
+    p = load_parameters("$(@__DIR__)/inputs/parameters.toml")
     includet(joinpath("inputs", p.signals.model))
 
     s = init_state(p)
@@ -33,10 +33,10 @@ play_animation!(fig, s_obs, states, 10)
 
 # fig, s_obs = init_plot(s, p, cache; show_polarities = false, bottom_plots = true)
 
-fig, s_obs = init_plot(s, p, cache; show_polarities = false, bottom_plots = false, show_signals = 1:3, force_scale = 0.5)
+fig, s_obs = init_plot(states[end], p, cache; show_polarities = false, bottom_plots = false, show_signals = 2:3, force_scale = 0.5)
 display(fig)
 
-record(fig, "three_directions_with_initial_wnt.mp4", 1:2:length(states); framerate = 30) do i
+record(fig, "3D_sym_inital_with_central_Wnt_signals.mp4", 1:1:length(states); framerate = 30) do i
      update_plot!(fig, s_obs, states[i], p)
 end
 

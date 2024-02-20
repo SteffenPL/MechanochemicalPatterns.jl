@@ -40,15 +40,22 @@ function init_plot(s, p, cache;
         end
     end
 
-    X_node = @lift Point2f.($state_obs.X)
+    PointT = dim(p) == 3 ? Point3f : Point2f
+
+
+    X_node = @lift PointT.($state_obs.X)
     ct = @lift $state_obs.cell_type
     E_node = lift(state_obs) do s 
         [get_bond(s,e) for e in edges(s.adh_bonds) ]
     end
-    F_node = @lift @. Point2f(force_scale * ($state_obs.F))
+    F_node = @lift @. PointT(force_scale * ($state_obs.F))
 
     n_signals = length(show_signals)
-    u_nodes = [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
+    u_nodes = if dim(p) == 2 
+        [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
+    else
+        [lift(s -> mean(i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], dims=2)[:,1,:], state_obs) for i in show_signals]
+    end
 
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_hard[1:length($state_obs.X)]
@@ -60,7 +67,7 @@ function init_plot(s, p, cache;
     fig = Figure(size = (1024, 768))
 
     if dim(p) == 3
-        ax = Axis3(fig[1,1], title = t_node, aspect = :data) # LScene(fig[1, 1])
+        ax = Axis3(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node, aspect = :data) # LScene(fig[1, 1])
     elseif dim(p) == 2 
         ax = Axis(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node) # LScene(fig[1, 1])
         ax.aspect = DataAspect()
@@ -91,6 +98,20 @@ function init_plot(s, p, cache;
             end
             
             linesegments!(P_n, color = :black, linewidth = 2; transparency)
+        end
+
+        if n_signals > 0
+            grid = cache.grid
+            signal_names = [string(st_key, " (#", st.ID,")") for (st_key, st) in pairs(p.signals.types)]
+
+            positions = ((1,2), (2,2), (1,3), (2,3), (1,4), (2,4))
+
+            for i_s in 1:n_signals
+                (xs, ys, zs) = cache.grid
+                ax_s = Axis(fig[positions[i_s]...], xlabel = "x", ylabel = "z", title = signal_names[show_signals[i_s]])
+                ax_s.aspect = DataAspect()
+                heatmap!(ax_s, xs, ys, u_nodes[i_s], colorrange = (0.0, 2.0), colormap = :thermal, interpolate = true)
+            end
         end
 
         if bottom_plots && dim(p) == 3
@@ -355,7 +376,7 @@ end
 
 #             if n_peaks > 0
 #                 peaks = @lift filteredpeaks($state_obs, p, n_peaks)
-#                 pos = @lift @. Point2f(getproperty($peaks, :pos))
+#                 pos = @lift @. PointT(getproperty($peaks, :pos))
 #                 scatter!(pos, color = :red, markersize = 10.0)
 #             end
 
