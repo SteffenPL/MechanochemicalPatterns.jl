@@ -36,16 +36,16 @@
 
     [signals.types.FGF]
         ID = 2
-        D = 0e1 #2e3   # μm²/hr
-        decay = 0e-4 # 4e-2
-        init = "julia: (pos) -> 0.5 + 10 * (pos[1] / 1000)" # "julia: (pos) -> norm(pos) > 300 ? 1.0 : 0.0" # "julia: (pos) -> 0.5 + (pos[1] / 1000)" # 0.0 # "julia: (pos) -> norm(pos) > 200 ? 1.0 : 0.0"
+        D = 5e1 #2e3   # μm²/hr
+        decay = 5e-4 # 4e-2
+        init = "julia: (pos) -> norm(pos) > 300 ? 1.0 : 0.0" # "julia: (pos) -> 0.5 + (pos[1] / 1000)" # 0.0 # "julia: (pos) -> norm(pos) > 200 ? 1.0 : 0.0"
         boundaries = [{dirichlet = 1.0}, {dirichlet = 1.0}, {dirichlet = 1.0}] # [{dirichlet = 1.0}, {dirichlet = 1.0}]
 
     [signals.types.Wnt]
         ID = 3
-        D = 0e2   # μm²/hr
-        decay = 0e-3
-        init = 0.0 # "julia: (pos) -> 5.0 / ( (0.01 * norm(pos))^2 + 0.1 )"  # "julia: (pos) -> 0.5 + pos[1] / 1000" # "julia: (pos) -> 1.0 / (1 + 3e-5*((pos[1] - 150)^2 + 3*(pos[2])^2))" # 
+        D = 2e2   # μm²/hr
+        decay = 5e-3
+        init = "julia: (pos) -> 5.0 / ( (0.01 * norm(pos))^2 + 0.1 )"  # "julia: (pos) -> 0.5 + pos[1] / 1000" # "julia: (pos) -> 1.0 / (1 + 3e-5*((pos[1] - 150)^2 + 3*(pos[2])^2))" # 
         boundaries = [{neumann = 0.0}, {neumann = 0.0}, {neumann = 0.0}]
 
     # [signals.types.BMP]
@@ -125,7 +125,7 @@
 
     [cells.types.proximal]
         ID = 2
-        N = 0
+        N = 3000
         
         new_adh_rate = 0.0  # 1/hr
         break_adh_rate = 2.0  # 1/hr

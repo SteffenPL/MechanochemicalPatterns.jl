@@ -24,6 +24,7 @@ function attime(df, frame)
     return df[df.FRAME .== frame, [:POSITION_X, :POSITION_Y]] |> Matrix |> transpose
 end
 
+
 using KernelDensity
 
 xs = LinRange(0, 1300, 100)

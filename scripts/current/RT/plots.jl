@@ -54,12 +54,12 @@ function init_plot(s, p, cache;
     u_nodes = if dim(p) == 2 
         [lift(s -> i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], state_obs) for i in show_signals]
     else
-        [lift(s -> mean(i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], dims=2)[:,1,:], state_obs) for i in show_signals]
+        [lift(s -> i == 2 ? minimum(s.U.x[i], dims=2)[:,1,:] : mean(i == 1 ? s.U.x[i] .> 0.5 : s.U.x[i], dims=2)[:,1,:], state_obs) for i in show_signals]
     end
 
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_hard[1:length($state_obs.X)]
-    Rs_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_soft[1:length($state_obs.X)]
+    Rs_node = @lift (dim(p) == 2 ? 2 : 0.2)*cache.data.R_soft[1:length($state_obs.X)]
     Sox_node = @lift $state_obs.sox9
 
     # create plot
@@ -67,15 +67,16 @@ function init_plot(s, p, cache;
     fig = Figure(size = (1024, 768))
 
     if dim(p) == 3
-        ax = Axis3(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node, aspect = :data) # LScene(fig[1, 1])
+        # ax = Axis3(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node, aspect = :data) 
+        ax = LScene(fig[1:(n_signals > 1 ? 2 : 1),1])
     elseif dim(p) == 2 
         ax = Axis(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node) # LScene(fig[1, 1])
         ax.aspect = DataAspect()
     end
 
-    xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
-    ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
-    dim(p) == 3 && zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
+    #xlims!(ax, p.env.domain.min[1], p.env.domain.max[1])
+    #ylims!(ax, p.env.domain.min[2], p.env.domain.max[2])
+    #dim(p) == 3 && zlims!(ax, p.env.domain.min[3], p.env.domain.max[3])
 
     if dim(p) == 3
         meshscatter!(X_node, 

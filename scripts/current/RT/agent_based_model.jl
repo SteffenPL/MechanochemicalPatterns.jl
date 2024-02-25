@@ -36,7 +36,7 @@ play_animation!(fig, s_obs, states, 10)
 fig, s_obs = init_plot(states[end], p, cache; show_polarities = false, bottom_plots = false, show_signals = 2:3, force_scale = 0.5)
 display(fig)
 
-record(fig, "3D_sym_inital_with_central_Wnt_signals.mp4", 1:1:length(states); framerate = 30) do i
+record(fig, "3D_large_crazy.mp4", 1:1:length(states); framerate = 30) do i
      update_plot!(fig, s_obs, states[i], p)
 end
 
