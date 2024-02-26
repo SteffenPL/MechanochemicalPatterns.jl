@@ -59,16 +59,16 @@ function init_plot(s, p, cache;
 
     t_node = @lift @sprintf "Time = %.1fh" $state_obs.t
     R_node = @lift (dim(p) == 2 ? 2 : 1)*cache.data.R_hard[1:length($state_obs.X)]
-    Rs_node = @lift (dim(p) == 2 ? 2 : 0.2)*cache.data.R_soft[1:length($state_obs.X)]
+    Rs_node = @lift (dim(p) == 2 ? 2 : .2)*cache.data.R_soft[1:length($state_obs.X)]
     Sox_node = @lift $state_obs.sox9
 
     # create plot
 
-    fig = Figure(size = (1024, 768))
+    fig = Figure(size = (1200, 1200))
 
     if dim(p) == 3
-        # ax = Axis3(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node, aspect = :data) 
-        ax = LScene(fig[1:(n_signals > 1 ? 2 : 1),1])
+        ax = Axis3(fig[1:(n_signals > 1 ? 2 : 1),1], aspect = :data) 
+        #ax = LScene(fig[1:(n_signals > 1 ? 2 : 1),1])
     elseif dim(p) == 2 
         ax = Axis(fig[1:(n_signals > 1 ? 2 : 1),1], title = t_node) # LScene(fig[1, 1])
         ax.aspect = DataAspect()

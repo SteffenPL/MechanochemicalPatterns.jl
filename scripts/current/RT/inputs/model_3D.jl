@@ -75,7 +75,7 @@ function pde!(du, u::ArrayPartition{Float64, Tuple{MT, MT, MT}}, p, t) where {MT
     laplace!(du.x[2], u.x[2], st[2].D, p.dV, boundaries = p.boundaries[2], factor = Dom)
     laplace!(du.x[3], u.x[3], st[3].D, p.dV, boundaries = p.boundaries[3], factor = InsideDom)
     
-    fnc(z) = z > 0.5 ? 10.0 : 1.0
+    fnc(z) = z > 0.5 ? 2.0 : 1.0
     # decay
     @. du.x[1] -= st[1].decay * u.x[1]
     @. du.x[2] -= st[2].decay * fnc(u.x[1]) * u.x[2]
